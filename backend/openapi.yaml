@@ -1,0 +1,342 @@
+openapi: 3.0.3
+info:
+  title: YourCoffee API
+  version: 1.0.0
+  description: |
+    Backend кофейни (Express + PostgreSQL).
+
+    **Авторизация:** после `POST /api/auth/login` сохраните `accessToken` и передавайте заголовок
+    `Authorization: Bearer <accessToken>` для защищённых маршрутов.
+
+servers:
+  - url: http://localhost:5000
+    description: Локальный сервер
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Drinks
+  - name: Catalog
+  - name: Favorites
+  - name: Preferences
+  - name: Recommendations
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      summary: Проверка API
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  message: { type: string }
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Регистрация
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        '201':
+          description: Пользователь создан
+        '400': { description: Неверное тело запроса }
+        '409': { description: Email уже занят }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход (access + refresh токены)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: Токены
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  refreshToken: { type: string }
+        '401': { description: Неверные учётные данные }
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Обновить access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Новый access token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход (удалить refresh token)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Текущий пользователь
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Профиль
+        '401': { description: Нет или неверный токен }
+
+  /api/drinks/calculate:
+    post:
+      tags: [Drinks]
+      summary: Рассчитать цену (объём + добавки)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [drink_id, volume_id]
+              properties:
+                drink_id: { type: integer }
+                volume_id: { type: integer }
+                ingredients:
+                  type: array
+                  items: { type: integer }
+                  description: ID дополнительных ингредиентов (опционально)
+      responses:
+        '200':
+          description: Разбивка цены
+        '404': { description: Объём недоступен для напитка }
+
+  /api/drinks:
+    get:
+      tags: [Drinks]
+      summary: Список напитков (фильтры)
+      parameters:
+        - in: query
+          name: category
+          schema: { type: integer }
+          description: ID категории
+        - in: query
+          name: tag
+          schema: { type: integer }
+          description: ID тега
+        - in: query
+          name: is_hot
+          schema: { type: boolean }
+        - in: query
+          name: min_price
+          schema: { type: number }
+          description: Мин. цена по строкам drink_volumes
+        - in: query
+          name: max_price
+          schema: { type: number }
+      responses:
+        '200':
+          description: Массив напитков
+
+  /api/drinks/{id}:
+    get:
+      tags: [Drinks]
+      summary: Напиток по ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+      responses:
+        '200': { description: Напиток }
+        '404': { description: Не найден }
+
+  /api/drinks/{id}/volumes:
+    get:
+      tags: [Drinks]
+      summary: Объёмы напитка
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+
+  /api/drinks/{id}/ingredients:
+    get:
+      tags: [Drinks]
+      summary: Состав напитка
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+
+  /api/drinks/{id}/tags:
+    get:
+      tags: [Drinks]
+      summary: Теги напитка
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+
+  /api/drinks/{id}/moods:
+    get:
+      tags: [Drinks]
+      summary: Настроения напитка
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer }
+
+  /api/categories:
+    get:
+      tags: [Catalog]
+      summary: Все категории
+
+  /api/tags:
+    get:
+      tags: [Catalog]
+      summary: Все теги
+
+  /api/moods:
+    get:
+      tags: [Catalog]
+      summary: Все настроения
+
+  /api/ingredients:
+    get:
+      tags: [Catalog]
+      summary: Ингредиенты
+      parameters:
+        - in: query
+          name: type
+          schema: { type: string }
+          description: Точное значение поля type в БД (например молоко)
+
+  /api/favorites:
+    get:
+      tags: [Favorites]
+      summary: Избранное
+      security: [{ bearerAuth: [] }]
+    post:
+      tags: [Favorites]
+      summary: Добавить в избранное
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [drink_id]
+              properties:
+                drink_id: { type: integer }
+
+  /api/favorites/{drink_id}:
+    delete:
+      tags: [Favorites]
+      summary: Удалить из избранного
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: drink_id
+          required: true
+          schema: { type: integer }
+
+  /api/preferences:
+    get:
+      tags: [Preferences]
+      summary: Предпочтения (теги)
+      security: [{ bearerAuth: [] }]
+    post:
+      tags: [Preferences]
+      summary: Обновить предпочтения
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tags]
+              properties:
+                tags:
+                  type: array
+                  items: { type: integer }
+                  description: ID тегов
+
+  /api/recommendations:
+    get:
+      tags: [Recommendations]
+      summary: Рекомендации по предпочтениям
+      security: [{ bearerAuth: [] }]
+
+  /api/recommendations/mood/{mood_id}:
+    get:
+      tags: [Recommendations]
+      summary: Рекомендации по настроению
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: mood_id
+          required: true
+          schema: { type: integer }
+
+  /api/recommendations/daily:
+    get:
+      tags: [Recommendations]
+      summary: Напиток дня
+      security: [{ bearerAuth: [] }]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security: []
