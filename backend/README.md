@@ -34,8 +34,14 @@ Server runs on `http://localhost:5000`.
 
 ## What is already configured
 
-- JWT auth (register/login/refresh/logout/me)
-- Drinks API (list, details, volumes, ingredients, tags, moods, calculate price)
+- JWT auth (`register/login/refresh/logout/me`)
+- Drinks API:
+  - list and filters
+  - details
+  - volumes with nutrition from `drink_volume_nutrition`
+  - ingredients from `drink_volume_ingredients`
+  - tags, moods, addons
+  - price calculation for a selected volume and allowed addons only
 - Favorites, preferences, recommendations
 - Basic security:
   - `helmet` for safe headers
@@ -48,3 +54,4 @@ Server runs on `http://localhost:5000`.
 - For protected endpoints, send header:
   - `Authorization: Bearer <accessToken>`
 - Main API schema is in `openapi.yaml`.
+- SQL schema lives in `sql/init.sql`.

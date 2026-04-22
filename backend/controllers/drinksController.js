@@ -120,12 +120,20 @@ export async function getDrinkVolumes(req, res) {
 
   try {
     const result = await pool.query(
-      `SELECT dv.id, dv.drink_id, dv.volume_id, dv.price,
-              v.name AS volume_name, v.ml
-       FROM drink_volumes dv
-       JOIN volumes v ON v.id = dv.volume_id
-       WHERE dv.drink_id = $1
-       ORDER BY v.ml`,
+      `SELECT dvn.drink_volume_id AS id,
+              dvn.drink_id,
+              dv.volume_id,
+              dvn.price,
+              dvn.volume_name,
+              dvn.ml,
+              dvn.calories,
+              dvn.protein,
+              dvn.fat,
+              dvn.carbs
+       FROM drink_volume_nutrition dvn
+       JOIN drink_volumes dv ON dv.id = dvn.drink_volume_id
+       WHERE dvn.drink_id = $1
+       ORDER BY dvn.ml`,
       [id]
     );
     return res.json(result.rows);
@@ -137,19 +145,41 @@ export async function getDrinkVolumes(req, res) {
 
 export async function getDrinkIngredients(req, res) {
   const id = Number(req.params.id);
+  const volumeId =
+    req.query.volume_id === undefined ? null : Number(req.query.volume_id);
+
   if (!Number.isFinite(id)) {
     return res.status(400).json({ error: 'Invalid id' });
   }
+  if (req.query.volume_id !== undefined && !Number.isFinite(volumeId)) {
+    return res.status(400).json({ error: 'volume_id must be a number' });
+  }
 
   try {
+    const params = [id];
+    let volumeFilter = '';
+
+    if (volumeId !== null) {
+      params.push(volumeId);
+      volumeFilter = ' AND dv.volume_id = $2';
+    }
+
     const result = await pool.query(
-      `SELECT di.drink_id, di.ingredient_id, di.default_amount,
+      `SELECT dv.id AS drink_volume_id,
+              dv.drink_id,
+              dv.volume_id,
+              v.name AS volume_name,
+              v.ml,
+              dvi.ingredient_id,
+              dvi.amount_g,
               i.name, i.price, i.type, i.is_optional
-       FROM drink_ingredients di
-       JOIN ingredients i ON i.id = di.ingredient_id
-       WHERE di.drink_id = $1
-       ORDER BY i.name`,
-      [id]
+       FROM drink_volumes dv
+       JOIN volumes v ON v.id = dv.volume_id
+       JOIN drink_volume_ingredients dvi ON dvi.drink_volume_id = dv.id
+       JOIN ingredients i ON i.id = dvi.ingredient_id
+       WHERE dv.drink_id = $1${volumeFilter}
+       ORDER BY v.ml, i.name`,
+      params
     );
     return res.json(result.rows);
   } catch (err) {
@@ -202,6 +232,29 @@ export async function getDrinkMoods(req, res) {
   }
 }
 
+export async function getDrinkAddons(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT i.id, i.name, i.price, i.type, i.is_optional,
+              i.calories, i.protein, i.fat, i.carbs
+       FROM drink_addons da
+       JOIN ingredients i ON i.id = da.ingredient_id
+       WHERE da.drink_id = $1
+       ORDER BY i.name`,
+      [id]
+    );
+    return res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch addons' });
+  }
+}
+
 export async function calculateDrinkPrice(req, res) {
   const drinkId = Number(req.body.drink_id);
   const volumeId = Number(req.body.volume_id);
@@ -235,12 +288,18 @@ export async function calculateDrinkPrice(req, res) {
 
     if (extraIngredientIds.length > 0) {
       const ingRes = await pool.query(
-        `SELECT id, name, price FROM ingredients WHERE id = ANY($1::int[])`,
-        [extraIngredientIds]
+        `SELECT i.id, i.name, i.price
+         FROM drink_addons da
+         JOIN ingredients i ON i.id = da.ingredient_id
+         WHERE da.drink_id = $1
+           AND i.id = ANY($2::int[])`,
+        [drinkId, extraIngredientIds]
       );
 
       if (ingRes.rows.length !== extraIngredientIds.length) {
-        return res.status(400).json({ error: 'Some ingredient ids are invalid' });
+        return res.status(400).json({
+          error: 'Some ingredient ids are invalid or unavailable for this drink',
+        });
       }
 
       for (const row of ingRes.rows) {
