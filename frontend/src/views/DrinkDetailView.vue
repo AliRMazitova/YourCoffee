@@ -7,8 +7,6 @@
         <div class="nav-links">
           <RouterLink to="/" class="nav-link">Главная</RouterLink>
           <RouterLink to="/drinks" class="nav-link nav-link--active">Меню</RouterLink>
-          <a href="#" class="nav-link">Рекомендации</a>
-          <a href="#" class="nav-link">Избранное</a>
         </div>
 
         <RouterLink to="/profile" class="profile-button" aria-label="Профиль">
@@ -23,103 +21,117 @@
         <span>Назад в меню</span>
       </RouterLink>
 
-      <section class="hero-grid">
-        <div class="drink-visual">
-          <div class="drink-image-wrap">
-            <img :src="drink.image" :alt="drink.title" />
-          </div>
+      <div v-if="isLoading" class="empty-state">
+        <h2>Загрузка</h2>
+        <p>Получаем данные напитка из базы данных.</p>
+      </div>
 
-          <div v-if="drink.aromaNotes?.length" class="aroma-notes">
-            <span v-for="note in drink.aromaNotes" :key="note">{{ note }}</span>
-          </div>
-        </div>
+      <div v-else-if="loadError" class="empty-state">
+        <h2>Ошибка</h2>
+        <p>{{ loadError }}</p>
+        <RouterLink to="/drinks" class="secondary-button">Вернуться к меню</RouterLink>
+      </div>
 
-        <div class="drink-summary">
-          <header class="summary-header">
-            <span class="eyebrow">Карточка напитка</span>
-            <h1>{{ drink.title }}</h1>
-            <p>{{ detailDescription }}</p>
-          </header>
-
-          <section v-if="drink.milkOptions?.length" class="detail-card">
-            <div class="section-topline">
-              <h2>Выберите молоко</h2>
-              <span>Настройте напиток под себя</span>
+      <template v-else-if="drink">
+        <section class="hero-grid">
+          <div class="drink-visual">
+            <div class="drink-image-wrap">
+              <img :src="drink.image" :alt="drink.title" />
             </div>
 
-            <div class="milk-grid">
-              <button
-                v-for="option in drink.milkOptions"
-                :key="option.id"
-                type="button"
-                :class="['milk-option', { 'milk-option--active': option.featured }]"
-              >
-                <span class="material-symbols-outlined">{{ option.icon }}</span>
-                <span>{{ option.label }}</span>
+            <div v-if="drink.badges?.length" class="aroma-notes">
+              <span v-for="note in drink.badges" :key="note">{{ note }}</span>
+            </div>
+          </div>
+
+          <div class="drink-summary">
+            <header class="summary-header">
+              <span class="eyebrow">Карточка напитка</span>
+              <h1>{{ drink.title }}</h1>
+              <p>{{ detailDescription }}</p>
+            </header>
+
+            <section v-if="volumes.length" class="detail-card">
+              <div class="section-topline">
+                <h2>Выберите объём</h2>
+                <span>Цена и пищевая ценность зависят от выбранного размера</span>
+              </div>
+
+              <div class="milk-grid">
+                <button
+                  v-for="volume in volumes"
+                  :key="volume.id"
+                  type="button"
+                  :class="['milk-option', { 'milk-option--active': selectedVolumeId === volume.id }]"
+                  @click="selectedVolumeId = volume.id"
+                >
+                  <span class="material-symbols-outlined">local_cafe</span>
+                  <span>{{ volume.volume_name }} · {{ volume.ml }} мл</span>
+                </button>
+              </div>
+            </section>
+
+            <section v-if="addons.length" class="detail-section">
+              <div class="section-topline">
+                <h2>Добавки</h2>
+                <span>Доступно для этого напитка</span>
+              </div>
+
+              <div class="chip-list">
+                <button
+                  v-for="addon in addons"
+                  :key="addon.id"
+                  type="button"
+                  class="chip-button"
+                >
+                  {{ addon.name }} · {{ formatPrice(addon.price) }}
+                </button>
+              </div>
+            </section>
+
+            <div class="action-stack">
+              <button type="button" class="primary-button">
+                <span class="material-symbols-outlined">shopping_bag</span>
+                Добавить в заказ — {{ selectedVolume?.priceLabel ?? drink.priceLabel }}
+              </button>
+
+              <button type="button" class="secondary-button">
+                <span class="material-symbols-outlined filled-icon">favorite</span>
+                Добавить в избранное
               </button>
             </div>
-          </section>
+          </div>
+        </section>
 
-          <section v-if="drink.toppings?.length" class="detail-section">
-            <div class="section-topline">
-              <h2>Добавки</h2>
-              <span>Финальные акценты вкуса</span>
+        <section class="info-grid">
+          <article class="info-card info-card--wide">
+            <div class="card-heading">
+              <span class="material-symbols-outlined">format_list_bulleted</span>
+              <h2>Состав</h2>
             </div>
 
-            <div class="chip-list">
-              <button
-                v-for="topping in drink.toppings"
-                :key="topping"
-                type="button"
-                class="chip-button"
-              >
-                {{ topping }}
-              </button>
+            <ul class="ingredients-list">
+              <li v-for="ingredient in currentIngredients" :key="`${ingredient.drink_volume_id}-${ingredient.ingredient_id}`">
+                <span class="dot"></span>
+                <span>{{ ingredient.name }}<template v-if="ingredient.amount_g"> — {{ ingredient.amount_g }} г</template></span>
+              </li>
+            </ul>
+          </article>
+
+          <article class="nutrition-card">
+            <h2>Пищевая ценность</h2>
+
+            <div class="nutrition-list">
+              <div v-for="item in nutritionRows" :key="item.label" class="nutrition-row">
+                <span>{{ item.label }}</span>
+                <strong>{{ item.value }}</strong>
+              </div>
             </div>
-          </section>
 
-          <div class="action-stack">
-            <button type="button" class="primary-button">
-              <span class="material-symbols-outlined">shopping_bag</span>
-              Добавить в заказ — {{ drink.priceLabel }}
-            </button>
-
-            <button type="button" class="secondary-button">
-              <span class="material-symbols-outlined filled-icon">favorite</span>
-              Добавить в избранное
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section class="info-grid">
-        <article class="info-card info-card--wide">
-          <div class="card-heading">
-            <span class="material-symbols-outlined">format_list_bulleted</span>
-            <h2>Состав</h2>
-          </div>
-
-          <ul class="ingredients-list">
-            <li v-for="ingredient in drink.ingredients ?? []" :key="ingredient">
-              <span class="dot"></span>
-              <span>{{ ingredient }}</span>
-            </li>
-          </ul>
-        </article>
-
-        <article class="nutrition-card">
-          <h2>Пищевая ценность</h2>
-
-          <div class="nutrition-list">
-            <div v-for="item in drink.nutrition ?? []" :key="item.label" class="nutrition-row">
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
-            </div>
-          </div>
-
-          <p>{{ drink.servingNote ?? "Данные указаны для стандартной порции напитка." }}</p>
-        </article>
-      </section>
+            <p>{{ servingNote }}</p>
+          </article>
+        </section>
+      </template>
     </main>
 
     <footer class="site-footer">
@@ -135,20 +147,120 @@
 </template>
 
 <script setup>
-import { computed } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, useRoute } from "vue-router";
 
-import { drinks, getDrinkBySlug } from "@/data/drinks";
+import { drinksApi } from "@/api/drinks.api";
 
 const route = useRoute();
 
 const footerLinks = ["Privacy", "Terms", "Brewing Guide", "Contact"];
 
-const drink = computed(() => getDrinkBySlug(route.params.slug) ?? drinks[0]);
+const drink = ref(null);
+const volumes = ref([]);
+const addons = ref([]);
+const ingredients = ref([]);
+const selectedVolumeId = ref(null);
+const isLoading = ref(false);
+const loadError = ref("");
+
+const selectedVolume = computed(
+  () => volumes.value.find((volume) => volume.id === selectedVolumeId.value) ?? null,
+);
+
+const currentIngredients = computed(() => {
+  if (!selectedVolume.value) {
+    return ingredients.value;
+  }
+
+  return ingredients.value.filter(
+    (ingredient) => ingredient.drink_volume_id === selectedVolume.value.id,
+  );
+});
+
+const nutritionRows = computed(
+  () => selectedVolume.value?.nutrition ?? [],
+);
 
 const detailDescription = computed(
-  () => drink.value.shortDescription ?? drink.value.description,
+  () => drink.value?.shortDescription ?? drink.value?.description ?? "",
 );
+
+const servingNote = computed(() => {
+  if (!selectedVolume.value) {
+    return "Данные указаны для стандартной порции напитка.";
+  }
+
+  return `Значения рассчитаны для объёма ${selectedVolume.value.volume_name} (${selectedVolume.value.ml} мл).`;
+});
+
+onMounted(async () => {
+  await loadDrinkDetails();
+});
+
+watch(
+  () => route.params.slug,
+  async () => {
+    await loadDrinkDetails();
+  },
+);
+
+watch(selectedVolumeId, async (volumeId) => {
+  if (!drink.value || !volumeId) {
+    return;
+  }
+
+  try {
+    ingredients.value = await drinksApi.getDrinkIngredients(drink.value.id, volumeId);
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+async function loadDrinkDetails() {
+  isLoading.value = true;
+  loadError.value = "";
+  drink.value = null;
+  volumes.value = [];
+  addons.value = [];
+  ingredients.value = [];
+  selectedVolumeId.value = null;
+
+  try {
+    const summary = await drinksApi.getDrinkBySlug(route.params.slug);
+
+    if (!summary) {
+      loadError.value = "Напиток не найден в базе данных.";
+      return;
+    }
+
+    const [drinkData, drinkVolumes, drinkAddons, drinkTags] = await Promise.all([
+      drinksApi.getDrinkById(summary.id),
+      drinksApi.getDrinkVolumes(summary.id),
+      drinksApi.getDrinkAddons(summary.id),
+      drinksApi.getDrinkTags(summary.id),
+    ]);
+
+    drink.value = {
+      ...drinkData,
+      badges: drinkTags.map((tag) => tag.name),
+      tags: drinkTags.map((tag) => tag.name),
+    };
+    volumes.value = drinkVolumes;
+    addons.value = drinkAddons;
+    selectedVolumeId.value = drinkVolumes[0]?.id ?? null;
+    ingredients.value = await drinksApi.getDrinkIngredients(summary.id, selectedVolumeId.value);
+  } catch (error) {
+    console.error(error);
+    loadError.value = "Не удалось загрузить карточку напитка из базы данных.";
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+function formatPrice(price) {
+  return `${price} ₽`;
+}
 </script>
 
 <style scoped>
@@ -215,7 +327,8 @@ const detailDescription = computed(
 .summary-header h1,
 .section-topline h2,
 .card-heading h2,
-.nutrition-card h2 {
+.nutrition-card h2,
+.empty-state h2 {
   font-family: "Noto Serif", serif;
 }
 
@@ -310,12 +423,31 @@ const detailDescription = computed(
 .drink-image-wrap,
 .detail-card,
 .info-card,
-.nutrition-card {
+.nutrition-card,
+.empty-state {
   border: 1px solid rgba(212, 195, 185, 0.28);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.72);
   box-shadow: 0 18px 48px rgba(70, 54, 42, 0.06);
   backdrop-filter: blur(8px);
+}
+
+.empty-state {
+  padding: 32px;
+  text-align: center;
+}
+
+.empty-state h2 {
+  margin: 0;
+  color: #795437;
+  font-size: 36px;
+  font-style: italic;
+}
+
+.empty-state p {
+  margin: 16px 0 0;
+  color: #50443d;
+  line-height: 1.7;
 }
 
 .drink-image-wrap {
@@ -429,6 +561,7 @@ const detailDescription = computed(
 .milk-option span:last-child {
   font-size: 14px;
   font-weight: 600;
+  text-align: center;
 }
 
 .milk-option--active,
@@ -680,7 +813,8 @@ const detailDescription = computed(
 
   .detail-card,
   .info-card,
-  .nutrition-card {
+  .nutrition-card,
+  .empty-state {
     padding: 20px;
     border-radius: 22px;
   }
@@ -692,7 +826,8 @@ const detailDescription = computed(
   .summary-header h1,
   .section-topline h2,
   .card-heading h2,
-  .nutrition-card h2 {
+  .nutrition-card h2,
+  .empty-state h2 {
     font-size: 34px;
   }
 

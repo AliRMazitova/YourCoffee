@@ -55,3 +55,9 @@ Server runs on `http://localhost:5000`.
   - `Authorization: Bearer <accessToken>`
 - Main API schema is in `openapi.yaml`.
 - SQL schema lives in `sql/init.sql`.
+
+## Local images
+
+- Put drink photos into `backend/uploads/drinks/`
+- Save the file path in `drinks.image_url`, for example `/uploads/drinks/cappuccino.jpg`
+- Backend serves everything from `backend/uploads` at the `/uploads` URL

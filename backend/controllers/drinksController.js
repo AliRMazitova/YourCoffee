@@ -1,5 +1,24 @@
 import pool from '../config/db.js';
 
+function buildDrinkBaseSelect() {
+  return `
+    SELECT
+      d.*,
+      c.name AS category_name,
+      COALESCE(MIN(dv.price), 0) AS min_price,
+      COALESCE(MAX(dv.price), 0) AS max_price,
+      COALESCE(
+        ARRAY_AGG(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL),
+        '{}'
+      ) AS tags
+    FROM drinks d
+    LEFT JOIN categories c ON c.id = d.category_id
+    LEFT JOIN drink_volumes dv ON dv.drink_id = d.id
+    LEFT JOIN drink_tags dt ON dt.drink_id = d.id
+    LEFT JOIN tags t ON t.id = dt.tag_id
+  `;
+}
+
 function parseIntParam(value) {
   if (value === undefined || value === null || value === '') return null;
   const n = Number.parseInt(String(value), 10);
@@ -80,9 +99,9 @@ export async function getAllDrinks(req, res) {
     }
 
     const sql = `
-      SELECT DISTINCT d.*
-      FROM drinks d
+      ${buildDrinkBaseSelect()}
       WHERE ${conditions.join(' AND ')}
+      GROUP BY d.id, c.name
       ORDER BY d.id
     `;
 
@@ -101,7 +120,14 @@ export async function getDrinkById(req, res) {
   }
 
   try {
-    const result = await pool.query('SELECT * FROM drinks WHERE id = $1', [id]);
+    const result = await pool.query(
+      `
+        ${buildDrinkBaseSelect()}
+        WHERE d.id = $1
+        GROUP BY d.id, c.name
+      `,
+      [id]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Drink not found' });
     }

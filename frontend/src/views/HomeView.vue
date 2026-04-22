@@ -24,20 +24,15 @@
     <main class="main-content">
       <section class="hero-section container">
         <div class="hero-content">
-          <h1 class="hero-title">Найди кофе, который подойдет именно тебе</h1>
+          <h1 class="hero-title">Найди кофе, который подходит именно тебе</h1>
           <p class="hero-description">
-            Мы верим, что кофе - это больше, чем просто кофеин. Он для каждого
-            свой. Наша система может помочь Вам с выбором напитка, под ваше
-            настроение и предпочтения.
+            Откройте для себя сезонные вкусы и фирменные напитки, собранные для уютных утренних ритуалов и бодрых дневных пауз.
           </p>
 
           <div class="hero-actions">
             <RouterLink to="/drinks" class="btn btn-primary">
               Посмотреть меню
             </RouterLink>
-            <button class="btn btn-secondary" type="button">
-              Рекомендации
-            </button>
           </div>
         </div>
 
@@ -56,27 +51,34 @@
             <div>
               <h2 class="section-title">Сезонные напитки</h2>
               <p class="section-description">
-                Тщательно подобранные блюда из нашего постоянно обновляющегося
-                меню, идеально подходящие для атмосферы этого сезона.
+                Тщательно подобранные позиции сезона с выразительным вкусом, мягкой текстурой и настроением, которое хочется повторить.
               </p>
             </div>
 
-            <RouterLink to="/drinks" class="section-link">Посмотреть все меню →</RouterLink>
+            <RouterLink to="/drinks" class="section-link">Посмотреть всё меню →</RouterLink>
           </div>
 
-          <div class="drinks-grid">
+          <div v-if="isLoading" class="seasonal-empty">
+            Загружаем сезонные напитки...
+          </div>
+
+          <div v-else-if="loadError" class="seasonal-empty">
+            {{ loadError }}
+          </div>
+
+          <div v-else-if="seasonalDrinks.length" class="drinks-grid">
             <article
               v-for="drink in seasonalDrinks"
-              :key="drink.title"
+              :key="drink.id"
               class="drink-card"
             >
               <div class="drink-image-wrapper">
-                <img class="drink-image" :src="drink.image" :alt="drink.alt" />
+                <img class="drink-image" :src="drink.image" :alt="drink.title" />
               </div>
 
               <div class="drink-header">
                 <h3 class="drink-title">{{ drink.title }}</h3>
-                <span class="drink-price">{{ drink.price }}</span>
+                <span class="drink-price">{{ formatPrice(drink.price) }}</span>
               </div>
 
               <div class="drink-tags">
@@ -88,19 +90,25 @@
               <p class="drink-description">{{ drink.description }}</p>
             </article>
           </div>
+
+          <div v-else class="seasonal-empty">
+            Сезонная подборка скоро появится.
+          </div>
         </div>
       </section>
 
-      <section class="highlight-section container">
+      <section v-if="featuredDrink" class="highlight-section container">
+        <div class="highlight-section-heading">
+          <h2 class="highlight-section-title">Попробуйте сегодня</h2>
+        </div>
+
         <div class="highlight-card">
           <div class="highlight-image-block">
             <img
               class="highlight-image"
               :src="featuredDrink.image"
-              :alt="featuredDrink.alt"
+              :alt="featuredDrink.title"
             />
-
-            <span class="highlight-badge">Сегодняшний хит</span>
           </div>
 
           <div class="highlight-content">
@@ -108,23 +116,11 @@
             <p class="highlight-description">{{ featuredDrink.description }}</p>
 
             <div class="highlight-prices">
-              <span class="highlight-price-current">{{
-                featuredDrink.price
-              }}</span>
-              <span class="highlight-price-old">{{
-                featuredDrink.oldPrice
-              }}</span>
+              <span class="highlight-price-current">{{ formatPrice(featuredDrink.price) }}</span>
             </div>
 
-            <button class="btn btn-primary" type="button">Подробнее</button>
+            <RouterLink :to="`/drinks/${featuredDrink.slug}`" class="btn btn-primary">Подробнее</RouterLink>
           </div>
-        </div>
-      </section>
-
-      <section class="cta-section">
-        <div class="container cta-content">
-          <h2 class="cta-title">Не знаете, что выбрать?</h2>
-          <a class="btn btn-ghost" href="#">Получить рекомендации</a>
         </div>
       </section>
     </main>
@@ -134,79 +130,67 @@
         <div class="footer-brand">YourCoffee</div>
 
         <div class="footer-links">
-          <a
-            v-for="link in footerLinks"
-            :key="link"
-            href="#"
-            class="footer-link"
-          >
-            {{ link }}
-          </a>
+          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
         </div>
 
-        <div class="footer-copy">© 2024 YourCoffee. The Curated Ritual.</div>
+        <div class="footer-copy">© 2026 YourCoffee.</div>
       </div>
     </footer>
   </div>
 </template>
 
 <script setup>
+import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
+
+import { drinksApi } from "@/api/drinks.api";
 
 const navLinks = [
   { label: "Главная", active: true, to: "/" },
   { label: "Меню", active: false, to: "/drinks" },
-  { label: "Избранное", active: false, to: "/profile" },
 ];
-
-const footerLinks = ["Privacy", "Terms", "Brewing Guide", "Contact"];
 
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuADut2UHFuo3q4YdCqhlg7r3JtdEMMi_RH9_li7lJbx4r2YkXaRxw9a0TsR4viJQK5tcegJsqBDLkJ-GodtorYq-vGMCWH_0mu2dAcu1PLcxwngVYoQ3I6yKXySQBBr80yP-AxAp0B8pTUrp3oEd-ZL1nf-nsZhi_fYW1Se3b0cWnUvJC2jiqjkQevf0piM23wLsYk3wilbl4bhKOhs37ngAaCN-RFSnPJWlFP5xwwAqxB23rNH9Zpq3KvFUFyfoEoSOYeIvF7CbA";
 
-const seasonalDrinks = [
-  {
-    title: "Ванильный латте",
-    price: "300",
-    tags: ["Сладкий", "Ваниль"],
-    description:
-      "Micro-foamed oat milk poured over our signature Brazilian espresso blend.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBLcgMkxoqq7hECBt_WN4-KCr7cQvQlyH88_K93SXTxUiPDqfka-tb6ekW2F5Ylq7eI8tyrFNE3B84alNiziybUQlSGqFI1fY1ssUFC4Had4MjO-aKvrbkjDauJ9CprPWVzhzlt5gtyOkDBxE-x7mx4tl2I-nOTaVgpeqr2MQWS3zYvI-b1zENQLdcOfqqhsaZHAahfC917nvx0Yfb1ENlYUhKsMi44iBLGfndOWDhqhaxY7u8fIymyb0pfmPrh7W18Bkn47oykYg",
-    alt: "Oat Milk Flat White",
-  },
-  {
-    title: "Amber Cold Brew",
-    price: "450",
-    tags: ["Citrus", "Clean"],
-    description:
-      "Steeped for 18 hours. A refreshing profile with bright notes of lemon zest.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuA7G_u4wt62jr2pswnfxcxlyfSej57P70LPMRldVJlg5m7G1ELxZFNrkEnGW1zcB-5_tfbjp3veMCsqIA2Znq45jK9BAxQQbkDw6ADmwKr4LiECk5onBiV7VqfzefvyEXIXTxl6cKDUoibHe4tbsVE42T4WULEe5Rb0Z39KukHgd-ZwXgKyDJIjYovMsTyKOWiHEpEepCAfwzc0KF5ccnZtcx5wLAXeu7d-_f4lFjOjVorbaixl7ZaKzu51gasc8gfrtqT-KdcOUQ",
-    alt: "Cold Brew Reserve",
-  },
-  {
-    title: "Origin V60",
-    price: "410",
-    tags: ["Floral", "Tea-like"],
-    description:
-      "Precision brewed single origin from Ethiopia. Jasmine and stone fruit notes.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBi6RzPCToTbccfjKlQs_2o-HiTQ6LJHuukFQ0Nhf09oCZm7haxny7XeVZU9m7coi8egmj0RooHya3OxxcgCpndxB0NuAXD0tPk6vsWbVGpRPfnXweG9Ar5ze5FUg4Cl9MrPmcHrIpyuvRyrIjZ1TDPXzg1O9MgJ3081F2vxCB4wsyh9_0UBZBucFsdLRKYForIByJvyM-91-u9rsoQJ4wg-Sh2xjpinFExQ4MAuT7iCXBTMBY0SKbOz7ULzt9t7L51UUTXitMMlQ",
-    alt: "V60 Pour Over",
-  },
-];
+const drinks = ref([]);
+const isLoading = ref(false);
+const loadError = ref("");
 
-const featuredDrink = {
-  title: "Honey Lavender Miel",
-  description:
-    "A delicate balance of local wildflower honey and dried organic lavender. Each sip is a subtle floral embrace, finished with a whisper of nutmeg.",
-  price: "250",
-  oldPrice: "350",
-  image:
-    "https://lh3.googleusercontent.com/aida-public/AB6AXuBi6RzPCToTbccfjKlQs_2o-HiTQ6LJHuukFQ0Nhf09oCZm7haxny7XeVZU9m7coi8egmj0RooHya3OxxcgCpndxB0NuAXD0tPk6vsWbVGpRPfnXweG9Ar5ze5FUg4Cl9MrPmcHrIpyuvRyrIjZ1TDPXzg1O9MgJ3081F2vxCB4wsyh9_0UBZBucFsdLRKYForIByJvyM-91-u9rsoQJ4wg-Sh2xjpinFExQ4MAuT7iCXBTMBY0SKbOz7ULzt9t7L51UUTXitMMlQ",
-  alt: "Drink of the Day",
-};
+const seasonalDrinks = computed(() =>
+  drinks.value.filter((drink) => drink.is_seasonal).slice(0, 3),
+);
+
+const featuredDrink = computed(() => {
+  if (!seasonalDrinks.value.length) {
+    return null;
+  }
+
+  const today = new Date();
+  const dayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+  const hash = [...dayKey].reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const index = hash % seasonalDrinks.value.length;
+
+  return seasonalDrinks.value[index];
+});
+
+onMounted(async () => {
+  isLoading.value = true;
+  loadError.value = "";
+
+  try {
+    drinks.value = await drinksApi.getDrinks();
+  } catch (error) {
+    console.error(error);
+    loadError.value = "Не удалось загрузить сезонные напитки.";
+  } finally {
+    isLoading.value = false;
+  }
+});
+
+function formatPrice(price) {
+  return `${price} ₽`;
+}
 </script>
 
 <style scoped>
@@ -260,8 +244,10 @@ const featuredDrink = {
   align-items: center;
   justify-content: space-between;
   gap: 24px;
-  padding-top: 24px;
-  padding-bottom: 24px;
+  width: min(100%, 1180px);
+  margin: 0 auto;
+  padding-top: 18px;
+  padding-bottom: 18px;
 }
 
 .brand,
@@ -339,7 +325,7 @@ const featuredDrink = {
 .hero-title,
 .section-title,
 .highlight-title,
-.cta-title {
+.highlight-section-title {
   margin: 0;
   font-family: "Noto Serif", serif;
   font-style: italic;
@@ -356,7 +342,8 @@ const featuredDrink = {
 .section-description,
 .highlight-description,
 .drink-description,
-.footer-copy {
+.footer-copy,
+.seasonal-empty {
   color: #50443d;
 }
 
@@ -397,30 +384,12 @@ const featuredDrink = {
   background-color: #956c4d;
 }
 
-.btn-secondary {
-  border-radius: 12px;
-  background-color: #e1e1c9;
-  color: #636451;
-}
-
-.btn-secondary:hover {
-  background-color: #e4e4cc;
-}
-
-.btn-ghost {
-  background-color: #e4e4cc;
-  color: #1b1d0e;
-}
-
-.btn-ghost:hover {
-  background-color: #795437;
-  color: #ffffff;
-}
-
 .hero-image-wrapper {
   overflow: hidden;
   border-radius: 48px;
-  aspect-ratio: 4 / 5;
+  max-width: 420px;
+  margin-left: auto;
+  aspect-ratio: 4 / 4.6;
 }
 
 .hero-image,
@@ -451,7 +420,7 @@ const featuredDrink = {
 }
 
 .section-description {
-  max-width: 420px;
+  max-width: 520px;
   margin: 0;
   line-height: 1.7;
 }
@@ -464,16 +433,23 @@ const featuredDrink = {
   color: #795437;
 }
 
+.seasonal-empty {
+  padding: 40px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.7);
+  text-align: center;
+}
+
 .drinks-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px;
+  gap: 24px;
 }
 
 .drink-card {
-  padding: 32px;
+  padding: 24px;
   background-color: #ffffff;
-  border-radius: 32px;
+  border-radius: 26px;
   transition: box-shadow 0.3s ease;
 }
 
@@ -483,9 +459,9 @@ const featuredDrink = {
 
 .drink-image-wrapper {
   overflow: hidden;
-  margin-bottom: 32px;
-  border-radius: 24px;
-  aspect-ratio: 1 / 1;
+  margin-bottom: 20px;
+  border-radius: 20px;
+  aspect-ratio: 1 / 0.9;
   background-color: #efefd7;
 }
 
@@ -508,11 +484,12 @@ const featuredDrink = {
 .drink-title {
   margin: 0;
   font-family: "Noto Serif", serif;
-  font-size: 32px;
+  font-size: 24px;
   font-style: italic;
 }
 
 .drink-price {
+  font-size: 14px;
   font-weight: 700;
   color: #795437;
 }
@@ -526,7 +503,7 @@ const featuredDrink = {
 
 .drink-tag {
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 999px;
   background-color: #fbddca;
   color: #28180d;
   font-size: 10px;
@@ -536,13 +513,22 @@ const featuredDrink = {
 
 .drink-description {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .highlight-section {
   padding-top: 128px;
   padding-bottom: 128px;
+}
+
+.highlight-section-heading {
+  margin-bottom: 24px;
+}
+
+.highlight-section-title {
+  font-size: clamp(30px, 4vw, 48px);
+  color: #795437;
 }
 
 .highlight-card {
@@ -556,20 +542,6 @@ const featuredDrink = {
   position: relative;
   flex: 0 0 60%;
   min-height: 500px;
-}
-
-.highlight-badge {
-  position: absolute;
-  top: 32px;
-  left: 32px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  background-color: #795437;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
 }
 
 .highlight-content {
@@ -601,28 +573,6 @@ const featuredDrink = {
   font-family: "Noto Serif", serif;
   font-size: 40px;
   font-style: italic;
-}
-
-.highlight-price-old {
-  font-size: 14px;
-  color: #50443d;
-  text-decoration: line-through;
-}
-
-.cta-section {
-  padding: 80px 0;
-  text-align: center;
-}
-
-.cta-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.cta-title {
-  margin-bottom: 32px;
-  font-size: clamp(28px, 3vw, 44px);
 }
 
 .site-footer {
@@ -663,7 +613,6 @@ const featuredDrink = {
   }
 
   .hero-section,
-  .drinks-grid,
   .highlight-card,
   .footer-inner {
     grid-template-columns: 1fr;
@@ -685,7 +634,6 @@ const featuredDrink = {
   }
 
   .drinks-grid {
-    display: grid;
     grid-template-columns: 1fr;
   }
 

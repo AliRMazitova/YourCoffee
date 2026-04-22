@@ -7,8 +7,6 @@
         <div class="nav-links">
           <RouterLink to="/" class="nav-link">Главная</RouterLink>
           <RouterLink to="/drinks" class="nav-link nav-link--active">Меню</RouterLink>
-          <a href="#" class="nav-link">Рекомендации</a>
-          <a href="#" class="nav-link">Избранное</a>
         </div>
 
         <RouterLink to="/profile" class="profile-button" aria-label="Профиль">
@@ -19,142 +17,113 @@
 
     <div class="shell drinks-layout">
       <aside class="filters-card">
-        <div class="filters-header">
-          <h2>Фильтры</h2>
-          <p>Настройте свой ритуал</p>
-        </div>
+        <div class="filters-card__scroll">
+          <div class="filters-header">
+            <h2>Фильтры</h2>
+            <p>Настройте меню под свой вкус</p>
+          </div>
 
-        <section class="filter-group">
-          <h3>Вкусовые теги</h3>
-          <label
-            v-for="tag in availableTags"
-            :key="tag"
-            class="checkbox-row"
-          >
-            <input
-              :checked="selectedTags.includes(tag)"
-              type="checkbox"
-              @change="toggleTag(tag)"
-            />
-            <span>{{ tag }}</span>
-          </label>
-        </section>
+          <section class="filter-group">
+            <h3 class="filter-group-title filter-group-title--tags">Теги</h3>
 
-        <section class="filter-group">
-          <h3>Температура</h3>
-          <div class="temperature-switch">
-            <button
+            <div class="tag-chips">
+              <button
+                v-for="tag in availableTags"
+                :key="tag"
+                type="button"
+                :class="['tag-chip', { 'tag-chip--active': selectedTags.includes(tag) }]"
+                @click="toggleTag(tag)"
+              >
+                {{ tag }}
+              </button>
+            </div>
+          </section>
+
+          <section class="filter-group">
+            <h3>Температура</h3>
+            <label
               v-for="option in temperatureOptions"
               :key="option.value"
-              type="button"
-              :class="['chip-button', { 'chip-button--active': selectedTemperature === option.value }]"
-              @click="selectedTemperature = option.value"
+              class="checkbox-row"
             >
-              {{ option.label }}
-            </button>
-          </div>
-        </section>
+              <input
+                :checked="selectedTemperatures.includes(option.value)"
+                type="checkbox"
+                @change="toggleTemperature(option.value)"
+              />
+              <span>{{ option.label }}</span>
+            </label>
+          </section>
 
-        <section class="filter-group">
-          <div class="price-header">
+          <section class="filter-group">
             <h3>Диапазон цены</h3>
-            <button type="button" class="reset-button" @click="resetFilters">Сбросить</button>
-          </div>
 
-          <div class="price-values">
-            <label>
-              <span>Мин.</span>
-              <input v-model.number="priceRange.min" type="number" min="100" max="1000" step="10" />
-            </label>
-            <label>
-              <span>Макс.</span>
-              <input v-model.number="priceRange.max" type="number" min="100" max="1000" step="10" />
-            </label>
-          </div>
+            <div class="price-values">
+              <label>
+                <span>Мин.</span>
+                <input v-model.number="priceRange.min" type="number" min="0" max="10000" step="10" />
+              </label>
+              <label>
+                <span>Макс.</span>
+                <input v-model.number="priceRange.max" type="number" min="0" max="10000" step="10" />
+              </label>
+            </div>
 
-          <div class="range-stack">
-            <input
-              v-model.number="priceRange.min"
-              class="range-input"
-              type="range"
-              min="100"
-              max="1000"
-              step="10"
-            />
-            <input
-              v-model.number="priceRange.max"
-              class="range-input"
-              type="range"
-              min="100"
-              max="1000"
-              step="10"
-            />
-          </div>
-        </section>
+            <div class="range-stack">
+              <input
+                v-model.number="priceRange.min"
+                class="range-input"
+                type="range"
+                :min="priceLimits.min"
+                :max="priceLimits.max"
+                step="10"
+              />
+              <input
+                v-model.number="priceRange.max"
+                class="range-input"
+                type="range"
+                :min="priceLimits.min"
+                :max="priceLimits.max"
+                step="10"
+              />
+            </div>
+          </section>
+        </div>
       </aside>
 
       <main class="content">
         <section class="mood-section">
-          <div class="section-heading">
-            <h1>Ваш ритуал сегодня</h1>
-            <p>Подберите напиток под текущее настроение и сохраните нужный темп дня.</p>
-          </div>
-
-          <div class="mood-card">
-            <div class="mood-tabs">
-              <button
-                v-for="mood in moods"
-                :key="mood.id"
-                type="button"
-                :class="['mood-tab', { 'mood-tab--active': activeMood === mood.id }]"
-                @click="activeMood = mood.id"
-              >
-                {{ mood.label }}
-              </button>
-            </div>
-
-            <div class="mood-content">
-              <div class="mood-copy">
-                <span class="eyebrow">{{ currentMood.kicker }}</span>
-                <h2>{{ currentMood.title }}</h2>
-                <p>{{ currentMood.description }}</p>
-                <button type="button" class="primary-button">Выбрать этот напиток</button>
-              </div>
-
-              <div class="mood-image-wrap">
-                <img :src="currentMood.image" :alt="currentMood.title" />
-              </div>
-            </div>
-          </div>
+          <div class="section-heading"></div>
         </section>
 
         <section class="collection-section">
           <div class="collection-header">
             <div>
               <h2>Наша коллекция</h2>
-              <p>{{ filteredDrinks.length }} напитков по вашему запросу</p>
-            </div>
-
-            <div class="collection-meta">
-              <span>Сортировка: Популярное</span>
-              <button type="button" class="icon-button" aria-label="Фильтры">
-                <span class="material-symbols-outlined">tune</span>
-              </button>
             </div>
           </div>
 
-          <div class="drinks-grid">
+          <div v-if="isLoading" class="empty-state">
+            <h3>Загрузка</h3>
+            <p>Получаем список напитков и цены из базы данных.</p>
+          </div>
+
+          <div v-else-if="loadError" class="empty-state">
+            <h3>Ошибка загрузки</h3>
+            <p>{{ loadError }}</p>
+            <button type="button" class="primary-button primary-button--compact" @click="loadInitialData">
+              Повторить
+            </button>
+          </div>
+
+          <div v-else class="drinks-grid">
             <article
               v-for="drink in filteredDrinks"
-              :key="drink.slug"
+              :key="drink.id"
               class="drink-card"
             >
               <div class="drink-media">
                 <img :src="drink.image" :alt="drink.title" />
-
-                <button type="button" class="favorite-button" aria-label="Добавить в избранное">
-                  <span class="material-symbols-outlined">favorite</span>
-                </button>
 
                 <div class="drink-tags">
                   <span v-for="tag in drink.badges" :key="tag">{{ tag }}</span>
@@ -173,9 +142,9 @@
             </article>
           </div>
 
-          <div v-if="!filteredDrinks.length" class="empty-state">
+          <div v-if="!isLoading && !loadError && !filteredDrinks.length" class="empty-state">
             <h3>Ничего не найдено</h3>
-            <p>Попробуйте ослабить фильтры или выбрать другую температуру напитка.</p>
+            <p>Попробуйте ослабить фильтры или изменить выбранную температуру.</p>
             <button type="button" class="primary-button primary-button--compact" @click="resetFilters">
               Сбросить фильтры
             </button>
@@ -197,57 +166,30 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
-import { drinks } from "@/data/drinks";
+
+import { drinksApi } from "@/api/drinks.api";
 
 const footerLinks = ["Конфиденциальность", "Условия", "Гайд по варке", "Контакты"];
 
-const moods = [
-  {
-    id: "cozy",
-    label: "Уют",
-    kicker: "Рекомендация для уюта",
-    title: "Ванильный Раф",
-    description:
-      "Нежнейший кофейный десерт со сливками и натуральной ванилью. Создает ощущение теплого пледа и спокойствия.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuBkQ2GCBKuIQkSxbLJdwVTiQY49dOlIiaaMZEiFjsdqZM9zdzRfoP2BoYpBwO2LvzHvdmW7j9lnXRysVdGLoHovVrwuGfZ6_gURGBmcN16uHwNwvIaYnA7pPBtHSDKOsK_NmZ_NZqnfc07mgnfgtg_xtviqgZ86XgQhX-8iZtIstyx_AF8uFGnPVLywR_4raVY2hArkWEOHIYxF3ONLUMO07p2afQ2pJ1hdfdo77N8Ytfa4L0dI4zqUTMDnXE7GX1bQMFKO8p4Ddw",
-  },
-  {
-    id: "refresh",
-    label: "Свежесть",
-    kicker: "Рекомендация для свежести",
-    title: "Эспрессо Тоник",
-    description:
-      "Бодрящий холодный микс с терпким тоником и долькой лайма. Идеальное завершение прогулки или начала вечера.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuA6PGcsTJ5n6gAXxeobpC_77LuvKR8sV2unW8dFRfgJJuafcJnWWT4UGuD6Cdc46GeApxxGPXoREE0gwzgGBIY4-lXHbzrhzU1B6UBx-exbQq05y7Ev2JpyBctWhwXG8vdrT3GIxO2nP7by08xVasaJi2yBHaYrzpGP3ahjLHo6W414gfuqM5FDDA40Ojff7uXBQ97Gr38FmUhyDCC8ppI3lvwmDH4rYqSxgOsfhd5VdsJGz6n5mQh1KVZtt9DSNCk53vdNA2XyNw",
-  },
-  {
-    id: "energy",
-    label: "Бодрость",
-    kicker: "Рекомендация для бодрости",
-    title: "Двойной Эспрессо",
-    description:
-      "Концентрированный вкус обжаренных зерен. Чистая энергия для тех, кто готов к новым свершениям сегодня.",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuDKiv0an9vqnKWqO2z9J1I6V1jRVlb-dxb64p83HamhP9h-6Il1iamjOhCeGk0HDvNGm0xpwN_BVd0jUlvD0sRSmdHNebS-ZNjb6WD5KMr2KWjqy5vPZGelrRpfkEj1NR_fDP60fZNBRI_zdcGwi4Q98I8vSzSol2VewzdciZu31y6f76G30yyDdXd2WOl8klBKtp88w9-bcgkZvCP2TPbbQfBd9OqNC0J38h2S-KZqm8zS1QRUgf85BO38-L_PlYRXc0RwX3BSew",
-  },
-];
-
-const availableTags = ["Сладкий", "Горький", "Молочный"];
+const drinks = ref([]);
+const availableTags = ref([]);
 const temperatureOptions = [
-  { value: "all", label: "Все" },
-  { value: "hot", label: "Горячий" },
-  { value: "cold", label: "Холодный" },
+  { value: "hot", label: "Горячие" },
+  { value: "cold", label: "Холодные" },
 ];
 
-const activeMood = ref("energy");
 const selectedTags = ref([]);
-const selectedTemperature = ref("all");
+const selectedTemperatures = ref([]);
+const isLoading = ref(false);
+const loadError = ref("");
 const priceRange = reactive({
-  min: 100,
+  min: 0,
+  max: 1000,
+});
+const priceLimits = reactive({
+  min: 0,
   max: 1000,
 });
 
@@ -261,19 +203,15 @@ watch(
   },
 );
 
-const currentMood = computed(
-  () => moods.find((mood) => mood.id === activeMood.value) ?? moods[0],
-);
-
 const filteredDrinks = computed(() =>
-  drinks.filter((drink) => {
+  drinks.value.filter((drink) => {
     const matchesTags =
       selectedTags.value.length === 0 ||
       selectedTags.value.every((tag) => drink.tags.includes(tag));
 
     const matchesTemperature =
-      selectedTemperature.value === "all" ||
-      drink.temperature === selectedTemperature.value;
+      selectedTemperatures.value.length === 0 ||
+      selectedTemperatures.value.includes(drink.temperature);
 
     const matchesPrice =
       drink.price >= priceRange.min && drink.price <= priceRange.max;
@@ -281,6 +219,43 @@ const filteredDrinks = computed(() =>
     return matchesTags && matchesTemperature && matchesPrice;
   }),
 );
+
+onMounted(async () => {
+  await loadInitialData();
+});
+
+async function loadInitialData() {
+  isLoading.value = true;
+  loadError.value = "";
+
+  try {
+    const [drinksResponse, tagsResponse] = await Promise.all([
+      drinksApi.getDrinks(),
+      drinksApi.getTags(),
+    ]);
+
+    drinks.value = drinksResponse;
+    availableTags.value = tagsResponse
+      .map((tag) => tag.name)
+      .filter((tag) => !["Горячий", "Холодный", "Горячие", "Холодные"].includes(tag));
+
+    if (drinksResponse.length > 0) {
+      const prices = drinksResponse.map((drink) => drink.price);
+      const min = Math.min(...prices);
+      const max = Math.max(...prices);
+
+      priceLimits.min = min;
+      priceLimits.max = max;
+      priceRange.min = min;
+      priceRange.max = max;
+    }
+  } catch (error) {
+    console.error(error);
+    loadError.value = "Не удалось загрузить меню из базы данных.";
+  } finally {
+    isLoading.value = false;
+  }
+}
 
 function toggleTag(tag) {
   if (selectedTags.value.includes(tag)) {
@@ -291,11 +266,20 @@ function toggleTag(tag) {
   selectedTags.value = [...selectedTags.value, tag];
 }
 
+function toggleTemperature(value) {
+  if (selectedTemperatures.value.includes(value)) {
+    selectedTemperatures.value = selectedTemperatures.value.filter((item) => item !== value);
+    return;
+  }
+
+  selectedTemperatures.value = [...selectedTemperatures.value, value];
+}
+
 function resetFilters() {
   selectedTags.value = [];
-  selectedTemperature.value = "all";
-  priceRange.min = 100;
-  priceRange.max = 1000;
+  selectedTemperatures.value = [];
+  priceRange.min = priceLimits.min;
+  priceRange.max = priceLimits.max;
 }
 
 function formatPrice(price) {
@@ -384,9 +368,6 @@ function formatPrice(price) {
   font-weight: 700;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease;
 }
 
 .nav-link:hover,
@@ -398,22 +379,17 @@ function formatPrice(price) {
   border-bottom-color: #795437;
 }
 
-.profile-button,
-.icon-button,
-.favorite-button {
+.profile-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 0;
-  cursor: pointer;
-}
-
-.profile-button {
   width: 44px;
   height: 44px;
   border-radius: 999px;
+  border: 0;
   background: rgba(255, 255, 255, 0.7);
   color: #795437;
+  cursor: pointer;
 }
 
 .drinks-layout {
@@ -426,7 +402,6 @@ function formatPrice(price) {
 }
 
 .filters-card,
-.mood-card,
 .drink-card,
 .empty-state {
   border: 1px solid rgba(212, 195, 185, 0.28);
@@ -439,12 +414,19 @@ function formatPrice(price) {
 .filters-card {
   position: sticky;
   top: 124px;
+  max-height: calc(100vh - 148px);
+  padding: 0;
+  overflow: hidden;
+}
+
+.filters-card__scroll {
+  max-height: calc(100vh - 148px);
   padding: 32px;
+  overflow-y: auto;
 }
 
 .filters-header h2,
 .section-heading h1,
-.mood-copy h2,
 .collection-header h2,
 .drink-heading h3,
 .empty-state h3 {
@@ -460,7 +442,6 @@ function formatPrice(price) {
 
 .filters-header p,
 .section-heading p,
-.mood-copy p,
 .collection-header p,
 .drink-body p,
 .footer-copy,
@@ -478,7 +459,6 @@ function formatPrice(price) {
 }
 
 .filter-group h3,
-.eyebrow,
 .collection-meta span {
   margin: 0 0 16px;
   color: rgba(121, 84, 55, 0.72);
@@ -486,6 +466,41 @@ function formatPrice(price) {
   font-weight: 700;
   letter-spacing: 0.18em;
   text-transform: uppercase;
+}
+
+.filter-group-title--tags {
+  margin-top: 8px;
+}
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tag-chip,
+.secondary-button {
+  border: 1px solid rgba(130, 116, 108, 0.35);
+  background: rgba(255, 255, 255, 0.7);
+  color: #636451;
+}
+
+.tag-chip {
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.tag-chip:hover,
+.tag-chip--active {
+  border-color: #795437;
+  background: #795437;
+  color: #fff;
 }
 
 .checkbox-row {
@@ -509,60 +524,6 @@ function formatPrice(price) {
   color: #636451;
   font-size: 14px;
   font-weight: 500;
-}
-
-.temperature-switch {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.chip-button,
-.secondary-button,
-.reset-button {
-  border: 1px solid rgba(130, 116, 108, 0.35);
-  background: rgba(255, 255, 255, 0.7);
-  color: #636451;
-}
-
-.chip-button {
-  padding: 10px 16px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.chip-button:hover,
-.chip-button--active {
-  border-color: #795437;
-  background: #795437;
-  color: #ffffff;
-}
-
-.price-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.price-header h3 {
-  margin-bottom: 0;
-}
-
-.reset-button {
-  padding: 8px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
 }
 
 .price-values {
@@ -611,10 +572,6 @@ function formatPrice(price) {
   gap: 28px;
 }
 
-.section-heading {
-  margin-bottom: 20px;
-}
-
 .section-heading h1 {
   color: #795437;
   font-size: clamp(40px, 5vw, 58px);
@@ -626,107 +583,6 @@ function formatPrice(price) {
   margin: 12px 0 0;
   font-size: 16px;
   line-height: 1.7;
-}
-
-.mood-card {
-  padding: 32px;
-}
-
-.mood-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 28px;
-}
-
-.mood-tab {
-  padding: 12px 20px;
-  border: 1px solid rgba(130, 116, 108, 0.35);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.7);
-  color: #795437;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.mood-tab:hover,
-.mood-tab--active {
-  border-color: #795437;
-  background: #795437;
-  color: #ffffff;
-}
-
-.mood-content {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 28px;
-  align-items: center;
-}
-
-.eyebrow {
-  display: block;
-  margin-bottom: 12px;
-}
-
-.mood-copy h2 {
-  color: #795437;
-  font-size: clamp(34px, 4vw, 48px);
-  font-style: italic;
-}
-
-.mood-copy p {
-  max-width: 520px;
-  margin: 16px 0 28px;
-  font-size: 15px;
-  line-height: 1.8;
-}
-
-.primary-button,
-.secondary-button {
-  padding: 15px 24px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    background-color 0.2s ease,
-    color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.primary-button {
-  border: 0;
-  background: #795437;
-  color: #ffffff;
-}
-
-.primary-button:hover {
-  background: #956c4d;
-  transform: translateY(-1px);
-}
-
-.primary-button--compact {
-  padding-inline: 20px;
-}
-
-.mood-image-wrap {
-  overflow: hidden;
-  border-radius: 26px;
-  aspect-ratio: 4 / 5;
-  background: #efefd7;
-}
-
-.mood-image-wrap img,
-.drink-media img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
 }
 
 .collection-section {
@@ -751,25 +607,6 @@ function formatPrice(price) {
 .collection-header p {
   margin: 8px 0 0;
   font-size: 15px;
-}
-
-.collection-meta {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.collection-meta span {
-  margin: 0;
-}
-
-.icon-button {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.8);
-  color: #795437;
-  box-shadow: 0 10px 24px rgba(121, 84, 55, 0.12);
 }
 
 .drinks-grid {
@@ -798,22 +635,10 @@ function formatPrice(price) {
 }
 
 .drink-media img {
-  transition: transform 0.6s ease;
-}
-
-.drink-card:hover .drink-media img {
-  transform: scale(1.06);
-}
-
-.favorite-button {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: rgba(251, 251, 226, 0.88);
-  color: #795437;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .drink-tags {
@@ -865,14 +690,31 @@ function formatPrice(price) {
   line-height: 1.75;
 }
 
-.secondary-button {
+.secondary-button,
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  padding: 15px 24px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .secondary-button:hover {
   border-color: #795437;
   background: #795437;
-  color: #ffffff;
+  color: #fff;
+}
+
+.primary-button {
+  border: 0;
+  background: #795437;
+  color: #fff;
 }
 
 .empty-state {
@@ -940,6 +782,12 @@ function formatPrice(price) {
 
   .filters-card {
     position: static;
+    max-height: none;
+  }
+
+  .filters-card__scroll {
+    max-height: none;
+    overflow: visible;
   }
 
   .drinks-grid {
@@ -952,22 +800,10 @@ function formatPrice(price) {
     display: none;
   }
 
-  .mood-content,
   .collection-header,
   .footer-inner {
-    grid-template-columns: 1fr;
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .mood-image-wrap {
-    width: 100%;
-    max-width: 420px;
-  }
-
-  .collection-meta {
-    width: 100%;
-    justify-content: space-between;
   }
 
   .drinks-grid {
@@ -993,15 +829,13 @@ function formatPrice(price) {
     padding-bottom: 56px;
   }
 
-  .filters-card,
-  .mood-card,
+  .filters-card__scroll,
   .drink-body,
   .empty-state {
     padding: 20px;
   }
 
   .filters-card,
-  .mood-card,
   .drink-card,
   .empty-state {
     border-radius: 22px;
@@ -1016,8 +850,7 @@ function formatPrice(price) {
   }
 
   .section-heading h1,
-  .collection-header h2,
-  .mood-copy h2 {
+  .collection-header h2 {
     font-size: 34px;
   }
 }
