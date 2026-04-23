@@ -11,10 +11,23 @@ export async function getFavorites(req, res) {
   try {
     const userId = req.user.id;
     const result = await pool.query(
-      `SELECT d.*
+      `SELECT
+         d.*,
+         c.name AS category_name,
+         COALESCE(MIN(dv.price), 0) AS min_price,
+         COALESCE(MAX(dv.price), 0) AS max_price,
+         COALESCE(
+           ARRAY_AGG(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL),
+           '{}'
+         ) AS tags
        FROM favorites f
        JOIN drinks d ON d.id = f.drink_id
+       LEFT JOIN categories c ON c.id = d.category_id
+       LEFT JOIN drink_volumes dv ON dv.drink_id = d.id
+       LEFT JOIN drink_tags dt ON dt.drink_id = d.id
+       LEFT JOIN tags t ON t.id = dt.tag_id
        WHERE f.user_id = $1
+       GROUP BY f.id, d.id, c.name
        ORDER BY f.id DESC`,
       [userId]
     );

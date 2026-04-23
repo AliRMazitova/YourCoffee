@@ -37,24 +37,21 @@
           <div class="drink-visual">
             <div class="drink-image-wrap">
               <img :src="drink.image" :alt="drink.title" />
-            </div>
-
-            <div v-if="drink.badges?.length" class="aroma-notes">
-              <span v-for="note in drink.badges" :key="note">{{ note }}</span>
+              <div v-if="drink.badges?.length" class="aroma-notes">
+                <span v-for="note in drink.badges" :key="note">{{ note }}</span>
+              </div>
             </div>
           </div>
 
           <div class="drink-summary">
             <header class="summary-header">
-              <span class="eyebrow">Карточка напитка</span>
               <h1>{{ drink.title }}</h1>
               <p>{{ detailDescription }}</p>
             </header>
 
             <section v-if="volumes.length" class="detail-card">
-              <div class="section-topline">
-                <h2>Выберите объём</h2>
-                <span>Цена и пищевая ценность зависят от выбранного размера</span>
+              <div class="section-topline section-topline--compact">
+                <h2>Выберите объем</h2>
               </div>
 
               <div class="milk-grid">
@@ -74,7 +71,7 @@
             <section v-if="addons.length" class="detail-section">
               <div class="section-topline">
                 <h2>Добавки</h2>
-                <span>Доступно для этого напитка</span>
+                <span>+40₽ к цене</span>
               </div>
 
               <div class="chip-list">
@@ -84,7 +81,7 @@
                   type="button"
                   class="chip-button"
                 >
-                  {{ addon.name }} · {{ formatPrice(addon.price) }}
+                  {{ addon.name }}
                 </button>
               </div>
             </section>
@@ -111,9 +108,15 @@
             </div>
 
             <ul class="ingredients-list">
-              <li v-for="ingredient in currentIngredients" :key="`${ingredient.drink_volume_id}-${ingredient.ingredient_id}`">
+              <li
+                v-for="ingredient in currentIngredients"
+                :key="`${ingredient.drink_volume_id}-${ingredient.ingredient_id}`"
+              >
                 <span class="dot"></span>
-                <span>{{ ingredient.name }}<template v-if="ingredient.amount_g"> — {{ ingredient.amount_g }} г</template></span>
+                <span>
+                  {{ ingredient.name }}
+                  <template v-if="ingredient.amount_g"> — {{ ingredient.amount_g }} г</template>
+                </span>
               </li>
             </ul>
           </article>
@@ -291,9 +294,9 @@ function formatPrice(price) {
 }
 
 .shell {
-  width: min(100%, 1560px);
+  width: min(100%, 1320px);
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 40px;
 }
 
 .top-nav {
@@ -395,7 +398,7 @@ function formatPrice(price) {
 
 .back-link {
   gap: 10px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
   color: #636451;
   font-size: 12px;
   font-weight: 700;
@@ -406,16 +409,18 @@ function formatPrice(price) {
 .hero-grid,
 .info-grid {
   display: grid;
-  gap: 32px;
+  gap: 22px;
 }
 
 .hero-grid {
-  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  grid-template-columns: minmax(0, 1.04fr) minmax(340px, 0.9fr);
   align-items: start;
 }
 
 .drink-visual {
   position: relative;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .drink-image-wrap,
@@ -424,14 +429,14 @@ function formatPrice(price) {
 .nutrition-card,
 .empty-state {
   border: 1px solid rgba(212, 195, 185, 0.28);
-  border-radius: 28px;
+  border-radius: 24px;
   background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 18px 48px rgba(70, 54, 42, 0.06);
+  box-shadow: 0 16px 36px rgba(70, 54, 42, 0.06);
   backdrop-filter: blur(8px);
 }
 
 .empty-state {
-  padding: 32px;
+  padding: 28px;
   text-align: center;
 }
 
@@ -449,9 +454,10 @@ function formatPrice(price) {
 }
 
 .drink-image-wrap {
+  position: relative;
   overflow: hidden;
-  width: min(100%, 560px);
-  margin: 0 auto;
+  width: min(100%, 600px);
+  margin: 0;
   aspect-ratio: 4 / 4.7;
 }
 
@@ -464,55 +470,53 @@ function formatPrice(price) {
 
 .aroma-notes {
   position: absolute;
-  top: 24px;
-  left: 24px;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.aroma-notes span,
-.eyebrow {
-  color: #6e5749;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: min(280px, calc(100% - 36px));
 }
 
 .aroma-notes span {
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 999px;
   background: rgba(251, 221, 202, 0.92);
   color: #28180d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .drink-summary {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
 }
 
 .summary-header h1 {
-  margin: 12px 0 18px;
+  margin: 0 0 14px;
   color: #795437;
-  font-size: clamp(40px, 5vw, 64px);
+  font-size: clamp(36px, 4.3vw, 56px);
   font-style: italic;
   line-height: 1.04;
 }
 
 .summary-header p {
   margin: 0;
-  max-width: 560px;
+  max-width: 520px;
   color: #50443d;
-  font-size: 17px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 1.7;
 }
 
 .detail-card,
 .info-card,
 .nutrition-card {
-  padding: 28px;
+  padding: 22px;
 }
 
 .section-topline,
@@ -520,8 +524,12 @@ function formatPrice(price) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  margin-bottom: 20px;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.section-topline--compact {
+  justify-content: flex-start;
 }
 
 .section-topline h2,
@@ -529,29 +537,30 @@ function formatPrice(price) {
 .nutrition-card h2 {
   margin: 0;
   color: #795437;
-  font-size: 32px;
+  font-size: 28px;
   font-style: italic;
+  white-space: nowrap;
 }
 
 .section-topline span,
 .nutrition-card p {
   color: #636451;
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .milk-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
+  gap: 10px;
 }
 
 .milk-option {
   flex-direction: column;
-  gap: 10px;
-  min-height: 108px;
+  gap: 8px;
+  min-height: 92px;
   border: 1px solid rgba(130, 116, 108, 0.28);
-  border-radius: 22px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.86);
   color: #636451;
   cursor: pointer;
@@ -559,7 +568,7 @@ function formatPrice(price) {
 }
 
 .milk-option span:last-child {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   text-align: center;
 }
@@ -574,13 +583,13 @@ function formatPrice(price) {
 .detail-section {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .chip-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 }
 
 .chip-button,
@@ -605,16 +614,16 @@ function formatPrice(price) {
 .action-stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .primary-button,
 .secondary-button {
   gap: 12px;
   width: 100%;
-  padding: 18px 24px;
+  padding: 16px 20px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -630,7 +639,7 @@ function formatPrice(price) {
   border: 0;
   background: linear-gradient(135deg, #795437 0%, #956c4d 100%);
   color: #ffffff;
-  box-shadow: 0 18px 32px rgba(121, 84, 55, 0.16);
+  box-shadow: 0 16px 28px rgba(121, 84, 55, 0.16);
 }
 
 .primary-button:hover {
@@ -638,7 +647,7 @@ function formatPrice(price) {
 }
 
 .secondary-button {
-  border-radius: 22px;
+  border-radius: 18px;
 }
 
 .secondary-button:hover {
@@ -733,7 +742,7 @@ function formatPrice(price) {
 }
 
 .nutrition-card p {
-  margin: 24px 0 0;
+  margin: 18px 0 0;
   color: rgba(251, 251, 226, 0.5);
   font-size: 11px;
   letter-spacing: 0.12em;
@@ -797,7 +806,7 @@ function formatPrice(price) {
 
 @media (max-width: 640px) {
   .shell {
-    padding: 0 16px;
+    padding: 0 18px;
   }
 
   .nav-inner {

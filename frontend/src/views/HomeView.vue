@@ -104,6 +104,7 @@
 
         <div class="highlight-card">
           <div class="highlight-image-block">
+            <div class="highlight-badge">Хит</div>
             <img
               class="highlight-image"
               :src="featuredDrink.image"
@@ -223,9 +224,9 @@ function formatPrice(price) {
 }
 
 .container {
-  width: min(100%, 1440px);
+  width: min(100%, 1320px);
   margin: 0 auto;
-  padding: 0 48px;
+  padding: 0 56px;
 }
 
 .top-nav {
@@ -315,6 +316,8 @@ function formatPrice(price) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 64px;
   align-items: center;
+  max-width: 1160px;
+  margin: 0 auto;
   padding-bottom: 96px;
 }
 
@@ -534,14 +537,31 @@ function formatPrice(price) {
 .highlight-card {
   display: flex;
   overflow: hidden;
+  max-width: 1040px;
+  margin: 0 auto;
   border-radius: 48px;
   background-color: #efefd7;
 }
 
 .highlight-image-block {
   position: relative;
-  flex: 0 0 48%;
-  min-height: 380px;
+  flex: 0 0 44%;
+  min-height: 336px;
+}
+
+.highlight-badge {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  z-index: 2;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(121, 84, 55, 0.92);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .highlight-content {
@@ -549,7 +569,7 @@ function formatPrice(price) {
   flex: 1;
   flex-direction: column;
   justify-content: center;
-  padding: 64px;
+  padding: 50px;
 }
 
 .highlight-title {
@@ -685,6 +705,11 @@ function formatPrice(price) {
   .highlight-card,
   .hero-image-wrapper {
     border-radius: 24px;
+  }
+
+  .highlight-badge {
+    top: 16px;
+    left: 16px;
   }
 }
 </style>

@@ -182,31 +182,66 @@ export async function getDrinkIngredients(req, res) {
   }
 
   try {
-    const params = [id];
-    let volumeFilter = '';
+    let result;
 
-    if (volumeId !== null) {
-      params.push(volumeId);
-      volumeFilter = ' AND dv.volume_id = $2';
+    if (volumeId === null) {
+      result = await pool.query(
+        `SELECT dv.id AS drink_volume_id,
+                dv.drink_id,
+                dv.volume_id,
+                v.name AS volume_name,
+                v.ml,
+                dvi.ingredient_id,
+                dvi.amount_g,
+                i.name, i.price, i.type, i.is_optional
+         FROM drink_volumes dv
+         JOIN volumes v ON v.id = dv.volume_id
+         JOIN drink_volume_ingredients dvi ON dvi.drink_volume_id = dv.id
+         JOIN ingredients i ON i.id = dvi.ingredient_id
+         WHERE dv.drink_id = $1
+         ORDER BY v.ml, i.name`,
+        [id]
+      );
+    } else {
+      // The frontend uses drink_volume_id from /volumes, while older callers may
+      // still send the base volumes.id. Support both and prefer the exact
+      // drink_volume match first.
+      result = await pool.query(
+        `WITH selected_volume AS (
+           SELECT dv.id
+           FROM drink_volumes dv
+           WHERE dv.drink_id = $1
+             AND dv.id = $2
+           UNION
+           SELECT dv.id
+           FROM drink_volumes dv
+           WHERE dv.drink_id = $1
+             AND dv.volume_id = $2
+             AND NOT EXISTS (
+               SELECT 1
+               FROM drink_volumes dv_exact
+               WHERE dv_exact.drink_id = $1
+                 AND dv_exact.id = $2
+             )
+         )
+         SELECT dv.id AS drink_volume_id,
+                dv.drink_id,
+                dv.volume_id,
+                v.name AS volume_name,
+                v.ml,
+                dvi.ingredient_id,
+                dvi.amount_g,
+                i.name, i.price, i.type, i.is_optional
+         FROM selected_volume sv
+         JOIN drink_volumes dv ON dv.id = sv.id
+         JOIN volumes v ON v.id = dv.volume_id
+         JOIN drink_volume_ingredients dvi ON dvi.drink_volume_id = dv.id
+         JOIN ingredients i ON i.id = dvi.ingredient_id
+         ORDER BY v.ml, i.name`,
+        [id, volumeId]
+      );
     }
 
-    const result = await pool.query(
-      `SELECT dv.id AS drink_volume_id,
-              dv.drink_id,
-              dv.volume_id,
-              v.name AS volume_name,
-              v.ml,
-              dvi.ingredient_id,
-              dvi.amount_g,
-              i.name, i.price, i.type, i.is_optional
-       FROM drink_volumes dv
-       JOIN volumes v ON v.id = dv.volume_id
-       JOIN drink_volume_ingredients dvi ON dvi.drink_volume_id = dv.id
-       JOIN ingredients i ON i.id = dvi.ingredient_id
-       WHERE dv.drink_id = $1${volumeFilter}
-       ORDER BY v.ml, i.name`,
-      params
-    );
     return res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -296,9 +331,26 @@ export async function calculateDrinkPrice(req, res) {
 
   try {
     const volRow = await pool.query(
-      `SELECT dv.price
-       FROM drink_volumes dv
-       WHERE dv.drink_id = $1 AND dv.volume_id = $2`,
+      `WITH selected_volume AS (
+         SELECT dv.id, dv.volume_id, dv.price
+         FROM drink_volumes dv
+         WHERE dv.drink_id = $1
+           AND dv.id = $2
+         UNION
+         SELECT dv.id, dv.volume_id, dv.price
+         FROM drink_volumes dv
+         WHERE dv.drink_id = $1
+           AND dv.volume_id = $2
+           AND NOT EXISTS (
+             SELECT 1
+             FROM drink_volumes dv_exact
+             WHERE dv_exact.drink_id = $1
+               AND dv_exact.id = $2
+           )
+       )
+       SELECT id AS drink_volume_id, volume_id, price
+       FROM selected_volume
+       LIMIT 1`,
       [drinkId, volumeId]
     );
 
@@ -343,7 +395,8 @@ export async function calculateDrinkPrice(req, res) {
 
     return res.json({
       drink_id: drinkId,
-      volume_id: volumeId,
+      volume_id: volRow.rows[0].volume_id,
+      drink_volume_id: volRow.rows[0].drink_volume_id,
       base_price: basePrice,
       extras: extrasBreakdown,
       extras_total: extrasTotal,

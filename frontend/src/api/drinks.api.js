@@ -25,7 +25,7 @@ function resolveImageUrl(value) {
   return `/${imageUrl}`;
 }
 
-function mapDrinkSummary(drink) {
+export function mapDrinkSummary(drink) {
   const price = normalizePrice(drink.min_price ?? drink.price);
   const isHot = drink.is_hot ?? true;
   const image = resolveImageUrl(drink.image_url) || DEFAULT_DRINK_IMAGE;
