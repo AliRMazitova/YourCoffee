@@ -540,8 +540,8 @@ function formatPrice(price) {
 
 .highlight-image-block {
   position: relative;
-  flex: 0 0 60%;
-  min-height: 500px;
+  flex: 0 0 48%;
+  min-height: 380px;
 }
 
 .highlight-content {

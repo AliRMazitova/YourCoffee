@@ -28,12 +28,13 @@ function resolveImageUrl(value) {
 function mapDrinkSummary(drink) {
   const price = normalizePrice(drink.min_price ?? drink.price);
   const isHot = drink.is_hot ?? true;
+  const image = resolveImageUrl(drink.image_url) || DEFAULT_DRINK_IMAGE;
 
   return {
     ...drink,
     slug: slugify(drink.name),
     title: drink.name,
-    image: DEFAULT_DRINK_IMAGE,
+    image,
     price,
     priceLabel: `${price} ₽`,
     description: drink.description ?? "",

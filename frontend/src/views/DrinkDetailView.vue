@@ -138,9 +138,9 @@
       <div class="shell footer-inner">
         <div class="footer-brand">YourCoffee</div>
         <div class="footer-links">
-          <a v-for="link in footerLinks" :key="link" href="#">{{ link }}</a>
+          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
         </div>
-        <div class="footer-copy">© 2024 YourCoffee. The Curated Ritual.</div>
+        <div class="footer-copy">© 2026 YourCoffee.</div>
       </div>
     </footer>
   </div>
@@ -153,8 +153,6 @@ import { RouterLink, useRoute } from "vue-router";
 import { drinksApi } from "@/api/drinks.api";
 
 const route = useRoute();
-
-const footerLinks = ["Privacy", "Terms", "Brewing Guide", "Contact"];
 
 const drink = ref(null);
 const volumes = ref([]);
@@ -452,7 +450,9 @@ function formatPrice(price) {
 
 .drink-image-wrap {
   overflow: hidden;
-  aspect-ratio: 4 / 5;
+  width: min(100%, 560px);
+  margin: 0 auto;
+  aspect-ratio: 4 / 4.7;
 }
 
 .drink-image-wrap img {
@@ -750,19 +750,21 @@ function formatPrice(price) {
 }
 
 .site-footer {
-  padding: 8px 0 48px;
+  margin-top: 80px;
+  padding: 48px 0;
+  background-color: #f5f5dc;
+  border-top: 1px solid rgba(212, 195, 185, 0.3);
 }
 
 .footer-inner {
-  padding-top: 32px;
-  border-top: 1px solid rgba(212, 195, 185, 0.35);
+  gap: 32px;
 }
 
 .footer-brand {
   font-size: 24px;
 }
 
-.footer-links a,
+.footer-link,
 .footer-copy {
   color: #636451;
   font-size: 10px;

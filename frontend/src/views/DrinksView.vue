@@ -157,9 +157,9 @@
       <div class="shell footer-inner">
         <div class="footer-brand">YourCoffee</div>
         <div class="footer-links">
-          <a v-for="link in footerLinks" :key="link" href="#">{{ link }}</a>
+          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
         </div>
-        <div class="footer-copy">© 2024 YourCoffee. Искусство ритуала.</div>
+        <div class="footer-copy">© 2026 YourCoffee.</div>
       </div>
     </footer>
   </div>
@@ -170,8 +170,6 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 
 import { drinksApi } from "@/api/drinks.api";
-
-const footerLinks = ["Конфиденциальность", "Условия", "Гайд по варке", "Контакты"];
 
 const drinks = ref([]);
 const availableTags = ref([]);
@@ -744,16 +742,17 @@ function formatPrice(price) {
 }
 
 .site-footer {
-  padding: 8px 0 48px;
+  margin-top: 80px;
+  padding: 48px 0;
+  background-color: #f5f5dc;
+  border-top: 1px solid rgba(212, 195, 185, 0.3);
 }
 
 .footer-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 24px;
-  padding-top: 32px;
-  border-top: 1px solid rgba(212, 195, 185, 0.35);
+  gap: 32px;
 }
 
 .footer-brand {
@@ -763,10 +762,10 @@ function formatPrice(price) {
 .footer-links {
   display: flex;
   flex-wrap: wrap;
-  gap: 28px;
+  gap: 32px;
 }
 
-.footer-links a,
+.footer-link,
 .footer-copy {
   color: #636451;
   font-size: 10px;
