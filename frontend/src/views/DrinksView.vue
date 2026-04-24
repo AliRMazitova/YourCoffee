@@ -1,19 +1,6 @@
 <template>
   <div class="drinks-view">
-    <nav class="top-nav">
-      <div class="shell nav-inner">
-        <RouterLink to="/" class="brand">YourCoffee</RouterLink>
-
-        <div class="nav-links">
-          <RouterLink to="/" class="nav-link">Главная</RouterLink>
-          <RouterLink to="/drinks" class="nav-link nav-link--active">Меню</RouterLink>
-        </div>
-
-        <RouterLink to="/profile" class="profile-button" aria-label="Профиль">
-          <span class="material-symbols-outlined">person</span>
-        </RouterLink>
-      </div>
-    </nav>
+    <SiteHeader />
 
     <div class="shell drinks-layout">
       <aside class="filters-card">
@@ -59,17 +46,25 @@
             <h3>Диапазон цены</h3>
 
             <div class="price-values">
-              <label>
-                <span>Мин.</span>
-                <input v-model.number="priceRange.min" type="number" min="0" max="10000" step="10" />
+              <label class="price-field">
+                <span class="price-field__label">Мин.</span>
+                <div class="price-field__input-wrap">
+                  <input v-model.number="priceRange.min" type="number" min="0" max="10000" step="10" />
+                  <span class="price-field__currency">₽</span>
+                </div>
               </label>
-              <label>
-                <span>Макс.</span>
-                <input v-model.number="priceRange.max" type="number" min="0" max="10000" step="10" />
+              <label class="price-field">
+                <span class="price-field__label">Макс.</span>
+                <div class="price-field__input-wrap">
+                  <input v-model.number="priceRange.max" type="number" min="0" max="10000" step="10" />
+                  <span class="price-field__currency">₽</span>
+                </div>
               </label>
             </div>
 
             <div class="range-stack">
+              <div class="range-track"></div>
+              <div class="range-track range-track--active" :style="rangeSelectionStyle"></div>
               <input
                 v-model.number="priceRange.min"
                 class="range-input"
@@ -133,7 +128,7 @@
               <div class="drink-body">
                 <div class="drink-heading">
                   <h3>{{ drink.title }}</h3>
-                  <span>{{ formatPrice(drink.price) }}</span>
+                  <span class="drink-price">{{ formatPrice(drink.price) }}</span>
                 </div>
 
                 <p>{{ drink.description }}</p>
@@ -153,15 +148,7 @@
       </main>
     </div>
 
-    <footer class="site-footer">
-      <div class="shell footer-inner">
-        <div class="footer-brand">YourCoffee</div>
-        <div class="footer-links">
-          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
-        </div>
-        <div class="footer-copy">© 2026 YourCoffee.</div>
-      </div>
-    </footer>
+    <SiteFooter />
   </div>
 </template>
 
@@ -169,6 +156,8 @@
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
 
+import SiteFooter from "@/components/SiteFooter.vue";
+import SiteHeader from "@/components/SiteHeader.vue";
 import { drinksApi } from "@/api/drinks.api";
 
 const drinks = ref([]);
@@ -191,13 +180,25 @@ const priceLimits = reactive({
   max: 1000,
 });
 
+const rangeSelectionStyle = computed(() => {
+  const span = Math.max(priceLimits.max - priceLimits.min, 1);
+  const start = ((priceRange.min - priceLimits.min) / span) * 100;
+  const end = ((priceRange.max - priceLimits.min) / span) * 100;
+
+  return {
+    left: `${Math.max(0, Math.min(start, 100))}%`,
+    width: `${Math.max(0, Math.min(end - start, 100))}%`,
+  };
+});
+
 watch(
   () => [priceRange.min, priceRange.max],
   ([min, max]) => {
-    if (min > max) {
-      priceRange.min = Math.min(min, max);
-      priceRange.max = Math.max(min, max);
-    }
+    const safeMin = clampPrice(min);
+    const safeMax = clampPrice(max);
+
+    priceRange.min = Math.min(safeMin, safeMax);
+    priceRange.max = Math.max(safeMin, safeMax);
   },
 );
 
@@ -281,7 +282,17 @@ function resetFilters() {
 }
 
 function formatPrice(price) {
-  return `${price} ₽`;
+  return `${price}\u00A0\u20BD`;
+}
+
+function clampPrice(value) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return priceLimits.min;
+  }
+
+  return Math.min(priceLimits.max, Math.max(priceLimits.min, numericValue));
 }
 </script>
 
@@ -527,41 +538,125 @@ function formatPrice(price) {
 .price-values {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
-.price-values label {
+.price-field {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.price-values span {
-  color: #636451;
-  font-size: 11px;
+.price-field__input-wrap {
+  position: relative;
+}
+
+.price-field__label {
+  color: rgba(121, 84, 55, 0.72);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
 }
 
 .price-values input {
   width: 100%;
-  padding: 12px 14px;
-  border: 1px solid rgba(212, 195, 185, 0.7);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.8);
-  color: #1b1d0e;
+  min-width: 0;
+  padding: 7px 24px 7px 10px;
+  border: 1px solid rgba(130, 116, 108, 0.35);
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.7);
+  color: #636451;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: none;
+  appearance: textfield;
+}
+
+.price-values input::-webkit-outer-spin-button,
+.price-values input::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+.price-field__currency {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  color: #636451;
+  font-size: 16px;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateY(-50%);
 }
 
 .range-stack {
-  display: grid;
-  gap: 12px;
-  margin-top: 18px;
+  position: relative;
+  height: 26px;
+  margin-top: 16px;
+}
+
+.range-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(214, 194, 165, 0.9);
+  transform: translateY(-50%);
+}
+
+.range-track--active {
+  background: #c8ab84;
 }
 
 .range-input {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  accent-color: #795437;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  appearance: none;
+}
+
+.range-input::-webkit-slider-runnable-track {
+  height: 2px;
+  background: transparent;
+}
+
+.range-input::-moz-range-track {
+  height: 2px;
+  background: transparent;
+}
+
+.range-input::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  border: 2px solid #9c7f5f;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 0 0 2px rgba(255, 251, 231, 0.95);
+  cursor: pointer;
+  pointer-events: auto;
+  appearance: none;
+}
+
+.range-input::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #9c7f5f;
+  border-radius: 50%;
+  background: #fffdf8;
+  box-shadow: 0 0 0 2px rgba(255, 251, 231, 0.95);
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.range-input:focus {
+  outline: none;
 }
 
 .content {
@@ -677,9 +772,11 @@ function formatPrice(price) {
   font-style: italic;
 }
 
-.drink-heading span {
+.drink-price {
   color: #795437;
   font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .drink-body p {

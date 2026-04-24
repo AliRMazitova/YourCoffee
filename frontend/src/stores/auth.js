@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { authApi } from "@/api/auth.api";
+import { useFavoritesStore } from "@/stores/favorites";
 
 export const useAuthStore = defineStore("auth", {
   state: () => ({
@@ -29,13 +30,16 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async login(credentials) {
+      const favorites = useFavoritesStore();
       const { data } = await authApi.login(credentials);
       this.setTokens(data.accessToken, data.refreshToken);
       try {
         await this.fetchProfile();
+        await favorites.loadFavorites(true);
       } catch (e) {
         this.user = null;
         this.setTokens(null, null);
+        favorites.clear();
         throw e;
       }
     },
@@ -50,16 +54,21 @@ export const useAuthStore = defineStore("auth", {
     },
 
     async initAuth() {
+      const favorites = useFavoritesStore();
       if (this.accessToken && !this.user) {
         try {
           await this.fetchProfile();
+          await favorites.loadFavorites(true);
         } catch {
           await this.logout();
         }
+      } else if (!this.accessToken) {
+        favorites.clear();
       }
     },
 
     async logout() {
+      const favorites = useFavoritesStore();
       const rt = this.refreshToken;
       if (rt) {
         try {
@@ -70,6 +79,7 @@ export const useAuthStore = defineStore("auth", {
       }
       this.user = null;
       this.setTokens(null, null);
+      favorites.clear();
     },
   },
 });

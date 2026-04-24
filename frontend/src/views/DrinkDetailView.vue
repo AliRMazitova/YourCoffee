@@ -1,19 +1,6 @@
 <template>
   <div class="drink-detail-view">
-    <nav class="top-nav">
-      <div class="shell nav-inner">
-        <RouterLink to="/" class="brand">YourCoffee</RouterLink>
-
-        <div class="nav-links">
-          <RouterLink to="/" class="nav-link">Главная</RouterLink>
-          <RouterLink to="/drinks" class="nav-link nav-link--active">Меню</RouterLink>
-        </div>
-
-        <RouterLink to="/profile" class="profile-button" aria-label="Профиль">
-          <span class="material-symbols-outlined">person</span>
-        </RouterLink>
-      </div>
-    </nav>
+        <SiteHeader />
 
     <main class="shell detail-main">
       <RouterLink to="/drinks" class="back-link">
@@ -92,9 +79,14 @@
                 Добавить в заказ — {{ selectedVolume?.priceLabel ?? drink.priceLabel }}
               </button>
 
-              <button type="button" class="secondary-button">
+              <button
+                v-if="auth.isAuthenticated"
+                type="button"
+                class="secondary-button"
+                @click="toggleFavorite"
+              >
                 <span class="material-symbols-outlined filled-icon">favorite</span>
-                Добавить в избранное
+                {{ isFavorite ? "Убрать из избранного" : "Добавить в избранное" }}
               </button>
             </div>
           </div>
@@ -137,25 +129,24 @@
       </template>
     </main>
 
-    <footer class="site-footer">
-      <div class="shell footer-inner">
-        <div class="footer-brand">YourCoffee</div>
-        <div class="footer-links">
-          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
-        </div>
-        <div class="footer-copy">© 2026 YourCoffee.</div>
-      </div>
-    </footer>
+        <SiteFooter />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import SiteFooter from "@/components/SiteFooter.vue";
+import SiteHeader from "@/components/SiteHeader.vue";
+
 import { RouterLink, useRoute } from "vue-router";
 
 import { drinksApi } from "@/api/drinks.api";
+import { useAuthStore } from "@/stores/auth";
+import { useFavoritesStore } from "@/stores/favorites";
 
 const route = useRoute();
+const auth = useAuthStore();
+const favorites = useFavoritesStore();
 
 const drink = ref(null);
 const volumes = ref([]);
@@ -187,6 +178,14 @@ const detailDescription = computed(
   () => drink.value?.shortDescription ?? drink.value?.description ?? "",
 );
 
+const isFavorite = computed(() => {
+  if (!drink.value) {
+    return false;
+  }
+
+  return favorites.isFavorite(drink.value.id);
+});
+
 const servingNote = computed(() => {
   if (!selectedVolume.value) {
     return "Данные указаны для стандартной порции напитка.";
@@ -196,7 +195,7 @@ const servingNote = computed(() => {
 });
 
 onMounted(async () => {
-  await loadDrinkDetails();
+  await Promise.all([loadDrinkDetails(), auth.initAuth()]);
 });
 
 watch(
@@ -261,6 +260,18 @@ async function loadDrinkDetails() {
 
 function formatPrice(price) {
   return `${price} ₽`;
+}
+
+async function toggleFavorite() {
+  if (!drink.value) {
+    return;
+  }
+
+  try {
+    await favorites.toggleFavorite(drink.value);
+  } catch (error) {
+    console.error(error);
+  }
 }
 </script>
 

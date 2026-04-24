@@ -1,5 +1,24 @@
 import pool from '../config/db.js';
 
+function buildRecommendationSelect() {
+  return `
+    SELECT
+      d.*,
+      c.name AS category_name,
+      COALESCE(MIN(dv.price), 0) AS min_price,
+      COALESCE(MAX(dv.price), 0) AS max_price,
+      COALESCE(
+        ARRAY_AGG(DISTINCT t.name) FILTER (WHERE t.name IS NOT NULL),
+        '{}'
+      ) AS tags
+    FROM drinks d
+    LEFT JOIN categories c ON c.id = d.category_id
+    LEFT JOIN drink_volumes dv ON dv.drink_id = d.id
+    LEFT JOIN drink_tags dt ON dt.drink_id = d.id
+    LEFT JOIN tags t ON t.id = dt.tag_id
+  `;
+}
+
 export async function getRecommendations(req, res) {
   try {
     const userId = req.user.id;
@@ -17,7 +36,12 @@ export async function getRecommendations(req, res) {
 
     if (preferredTagIds.length === 0) {
       const fallback = await pool.query(
-        'SELECT * FROM drinks ORDER BY id DESC LIMIT 10'
+        `
+          ${buildRecommendationSelect()}
+          GROUP BY d.id, c.name
+          ORDER BY d.id DESC
+          LIMIT 10
+        `
       );
       return res.json({
         preferred_tags: [],
@@ -26,13 +50,31 @@ export async function getRecommendations(req, res) {
     }
 
     const result = await pool.query(
-      `SELECT d.*, COUNT(*)::int AS tag_match_count
-       FROM drinks d
-       JOIN drink_tags dt ON dt.drink_id = d.id
-       WHERE dt.tag_id = ANY($1::int[])
-       GROUP BY d.id
-       ORDER BY tag_match_count DESC, d.id DESC
-       LIMIT 10`,
+      `
+       SELECT
+         recommendation_rows.*,
+         COUNT(DISTINCT matched_tags.tag_id)::int AS tag_match_count
+       FROM (
+         ${buildRecommendationSelect()}
+         GROUP BY d.id, c.name
+       ) AS recommendation_rows
+       JOIN drink_tags matched_tags ON matched_tags.drink_id = recommendation_rows.id
+       WHERE matched_tags.tag_id = ANY($1::int[])
+       GROUP BY
+         recommendation_rows.id,
+         recommendation_rows.name,
+         recommendation_rows.description,
+         recommendation_rows.image_url,
+         recommendation_rows.is_hot,
+         recommendation_rows.is_seasonal,
+         recommendation_rows.category_id,
+         recommendation_rows.category_name,
+         recommendation_rows.min_price,
+         recommendation_rows.max_price,
+         recommendation_rows.tags
+       ORDER BY tag_match_count DESC, recommendation_rows.id DESC
+       LIMIT 10
+      `,
       [preferredTagIds]
     );
 

@@ -1,20 +1,6 @@
 <template>
   <div class="profile-view">
-    <nav class="top-nav">
-      <div class="shell nav-inner">
-        <RouterLink to="/" class="brand">YourCoffee</RouterLink>
-
-        <div class="nav-links">
-          <RouterLink to="/" class="nav-link">Главная</RouterLink>
-          <RouterLink to="/drinks" class="nav-link">Меню</RouterLink>
-          <a href="#" class="nav-link nav-link--active">Профиль</a>
-        </div>
-
-        <button class="profile-icon-button" type="button" aria-label="Профиль">
-          <span class="material-symbols-outlined">person</span>
-        </button>
-      </div>
-    </nav>
+        <SiteHeader />
 
     <main class="shell profile-main">
       <div class="profile-layout">
@@ -46,21 +32,109 @@
           </section>
 
           <section class="panel">
-            <h2 class="panel-title">Вкусовые предпочтения</h2>
+            <div class="panel-heading">
+              <h2 class="panel-title">Вкусовые предпочтения</h2>
+              <button
+                v-if="!preferencesLoading"
+                class="panel-action-button"
+                :class="{ 'panel-action-button--icon': hasPreferences }"
+                type="button"
+                :aria-label="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
+                :title="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
+                @click="openPreferencesEditor"
+              >
+                <span
+                  v-if="hasPreferences"
+                  class="material-symbols-outlined panel-action-button__icon"
+                  aria-hidden="true"
+                >
+                  edit
+                </span>
+                <span v-else>Выбрать</span>
+              </button>
+            </div>
 
             <div v-if="preferencesLoading" class="panel-note">Загружаем теги из базы данных...</div>
 
-            <div v-else-if="tasteRituals.length" class="ritual-list">
-              <span
-                v-for="ritual in tasteRituals"
-                :key="ritual"
-                class="ritual-tag"
-              >
-                {{ ritual }}
-              </span>
-            </div>
+            <template v-else>
+              <div v-if="tasteRituals.length" class="ritual-list">
+                <span
+                  v-for="ritual in tasteRituals"
+                  :key="ritual"
+                  class="ritual-tag"
+                >
+                  {{ ritual }}
+                </span>
+              </div>
 
-            <div v-else class="panel-note">Предпочтения пока не выбраны.</div>
+              <div v-else class="panel-note panel-note--empty">
+                Предпочтения пока не выбраны. Нажмите «Выбрать», чтобы указать вкусы.
+              </div>
+
+              <p v-if="preferencesError" class="panel-feedback panel-feedback--error">
+                {{ preferencesError }}
+              </p>
+              <p v-else-if="preferencesSuccess" class="panel-feedback panel-feedback--success">
+                {{ preferencesSuccess }}
+              </p>
+
+              <form
+                v-if="isPreferencesEditorOpen"
+                class="preferences-form"
+                @submit.prevent="savePreferences"
+              >
+                <div class="preferences-form__header">
+                  <h3>Выберите вкусы</h3>
+                  <p>
+                    Отметьте теги, которые лучше всего описывают ваши любимые напитки.
+                  </p>
+                </div>
+
+                <div v-if="availableTags.length" class="preferences-options">
+                  <label
+                    v-for="tag in availableTags"
+                    :key="tag.id"
+                    class="preference-option"
+                    :class="{
+                      'preference-option--selected': selectedTagIds.includes(tag.id),
+                    }"
+                  >
+                    <input
+                      class="preference-option__input"
+                      type="checkbox"
+                      :checked="selectedTagIds.includes(tag.id)"
+                      @change="toggleTagSelection(tag.id)"
+                    />
+                    <span class="preference-option__label">{{ tag.name }}</span>
+                  </label>
+                </div>
+
+                <div v-else class="panel-note">
+                  Список тегов пока недоступен.
+                </div>
+
+                <div class="preferences-form__actions">
+                  <button
+                    class="secondary-button secondary-button--ghost"
+                    type="button"
+                    @click="cancelPreferencesEditor"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    class="primary-button"
+                    type="submit"
+                    :disabled="preferencesSaving"
+                  >
+                    {{
+                      preferencesSaving
+                        ? "Сохраняем..."
+                        : "Сохранить"
+                    }}
+                  </button>
+                </div>
+              </form>
+            </template>
           </section>
         </aside>
 
@@ -94,7 +168,7 @@
                   class="favorite-card__favorite"
                   type="button"
                   aria-label="Убрать из избранного"
-                  @click="toggleFavorite(drink)"
+                  @click.prevent.stop="toggleFavorite(drink)"
                 >
                   <span class="material-symbols-outlined material-symbols-outlined--filled">favorite</span>
                 </button>
@@ -130,20 +204,15 @@
       </div>
     </main>
 
-    <footer class="site-footer">
-      <div class="shell footer-inner">
-        <div class="footer-brand">YourCoffee</div>
-        <div class="footer-links">
-          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
-        </div>
-        <div class="footer-copy">© 2026 YourCoffee.</div>
-      </div>
-    </footer>
+        <SiteFooter />
   </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
+import SiteFooter from "@/components/SiteFooter.vue";
+import SiteHeader from "@/components/SiteHeader.vue";
+
 import { RouterLink } from "vue-router";
 
 import { preferencesApi } from "@/api/preferences.api";
@@ -154,15 +223,22 @@ const auth = useAuthStore();
 const favorites = useFavoritesStore();
 
 const preferencesLoading = ref(false);
+const preferencesSaving = ref(false);
+const isPreferencesEditorOpen = ref(false);
+const preferencesError = ref("");
+const preferencesSuccess = ref("");
+const availableTags = ref([]);
+const selectedTagIds = ref([]);
 const tasteRituals = ref([]);
 
 onMounted(async () => {
   await auth.initAuth();
-  await Promise.all([loadPreferences(), favorites.loadFavorites()]);
+  await Promise.all([loadAvailableTags(), loadPreferences(), favorites.loadFavorites()]);
 });
 
 const user = computed(() => auth.user ?? null);
 const favoriteDrinks = computed(() => favorites.items);
+const hasPreferences = computed(() => tasteRituals.value.length > 0);
 
 const displayName = computed(() => user.value?.username || "Julian Thorne");
 const displayEmail = computed(() => user.value?.email || "julian.t@ritual.com");
@@ -190,17 +266,80 @@ const location = "Казань";
 
 async function loadPreferences() {
   preferencesLoading.value = true;
+  preferencesError.value = "";
 
   try {
     const data = await preferencesApi.getPreferences();
+    selectedTagIds.value = Array.isArray(data?.tags)
+      ? data.tags
+          .map((tagId) => Number(tagId))
+          .filter((tagId) => Number.isFinite(tagId))
+      : [];
     tasteRituals.value = Array.isArray(data?.tag_details)
       ? data.tag_details.map((tag) => tag.name)
       : [];
   } catch (error) {
     console.error(error);
+    selectedTagIds.value = [];
     tasteRituals.value = [];
+    preferencesError.value = "Не удалось загрузить предпочтения.";
   } finally {
     preferencesLoading.value = false;
+  }
+}
+
+async function loadAvailableTags() {
+  try {
+    const data = await preferencesApi.getTags();
+    availableTags.value = Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error(error);
+    availableTags.value = [];
+    preferencesError.value = "Не удалось загрузить список тегов.";
+  }
+}
+
+function openPreferencesEditor() {
+  preferencesError.value = "";
+  preferencesSuccess.value = "";
+  isPreferencesEditorOpen.value = true;
+}
+
+function cancelPreferencesEditor() {
+  isPreferencesEditorOpen.value = false;
+  preferencesError.value = "";
+  preferencesSuccess.value = "";
+}
+
+function toggleTagSelection(tagId) {
+  if (selectedTagIds.value.includes(tagId)) {
+    selectedTagIds.value = selectedTagIds.value.filter((id) => id !== tagId);
+    return;
+  }
+
+  selectedTagIds.value = [...selectedTagIds.value, tagId];
+}
+
+async function savePreferences() {
+  preferencesSaving.value = true;
+  preferencesError.value = "";
+  preferencesSuccess.value = "";
+
+  try {
+    const tagsToSave = [...selectedTagIds.value];
+    await preferencesApi.updatePreferences(tagsToSave);
+    await loadPreferences();
+    isPreferencesEditorOpen.value = false;
+    preferencesSuccess.value = tagsToSave.length
+      ? "Вкусовые предпочтения сохранены."
+      : "Выбор вкусов очищен.";
+  } catch (error) {
+    console.error(error);
+    preferencesError.value =
+      error.response?.data?.error ||
+      "Не удалось сохранить вкусовые предпочтения.";
+  } finally {
+    preferencesSaving.value = false;
   }
 }
 
@@ -436,16 +575,96 @@ function formatPrice(price) {
   color: rgba(121, 84, 55, 0.65);
 }
 
-.panel-title {
+.panel-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 20px;
+  min-width: 0;
+}
+
+.panel-title {
+  min-width: 0;
+  flex: 1;
   color: #795437;
   font-size: 28px;
   font-style: italic;
 }
 
+.panel-action-button,
+.primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: #795437;
+  color: #fffdf8;
+  cursor: pointer;
+  flex-shrink: 0;
+  max-width: 100%;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.panel-action-button:hover,
+.primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(121, 84, 55, 0.18);
+}
+
+.panel-action-button:disabled,
+.primary-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+  box-shadow: none;
+}
+
+.panel-action-button--icon {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+
+.panel-action-button__icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
 .panel-note {
   font-size: 14px;
   line-height: 1.6;
+}
+
+.panel-note--empty {
+  margin-bottom: 18px;
+}
+
+.panel-feedback {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.panel-feedback--error {
+  background: rgba(186, 26, 26, 0.08);
+  color: #8f1d1d;
+}
+
+.panel-feedback--success {
+  background: rgba(69, 109, 54, 0.1);
+  color: #365926;
 }
 
 .ritual-list {
@@ -466,6 +685,90 @@ function formatPrice(price) {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.preferences-form {
+  margin-top: 24px;
+  padding: 22px;
+  border: 1px solid rgba(121, 84, 55, 0.12);
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(251, 243, 230, 0.9));
+}
+
+.preferences-form__header h3 {
+  margin: 0;
+  color: #795437;
+  font-family: "Noto Serif", serif;
+  font-size: 24px;
+  font-style: italic;
+}
+
+.preferences-form__header p {
+  margin: 10px 0 0;
+  color: #50443d;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.preferences-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.preference-option {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 18px;
+  border: 1px solid rgba(121, 84, 55, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #5d4633;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.preference-option:hover {
+  transform: translateY(-1px);
+  border-color: rgba(121, 84, 55, 0.3);
+}
+
+.preference-option--selected {
+  border-color: transparent;
+  background: linear-gradient(135deg, #795437, #9a6a47);
+  color: #fff8ef;
+  box-shadow: 0 14px 28px rgba(121, 84, 55, 0.18);
+}
+
+.preference-option__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.preference-option__label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.preferences-form__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
 }
 
 .content-header {
@@ -597,16 +900,18 @@ function formatPrice(price) {
 
 .secondary-button {
   margin-top: 18px;
+  padding: 14px 18px;
+  border: 1px solid rgba(121, 84, 55, 0.18);
+  border-radius: 999px;
+  background: #fff;
   color: #795437;
   font-size: 13px;
   font-weight: 700;
 }
 
-.secondary-button {
-  padding: 14px 18px;
-  border: 1px solid rgba(121, 84, 55, 0.18);
-  border-radius: 999px;
-  background: #fff;
+.secondary-button--ghost {
+  margin-top: 0;
+  background: transparent;
 }
 
 .empty-state {
@@ -730,8 +1035,19 @@ function formatPrice(price) {
     border-radius: 22px;
   }
 
+  .panel-heading,
+  .preferences-form__actions,
   .favorite-card__header {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-action-button {
+    align-self: flex-start;
+  }
+
+  .panel-action-button--icon {
+    align-self: flex-end;
   }
 
   .profile-header h1 {

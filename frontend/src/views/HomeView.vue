@@ -1,32 +1,14 @@
 <template>
   <div class="home-view">
-    <nav class="top-nav">
-      <div class="container nav-inner">
-        <RouterLink to="/" class="brand">YourCoffee</RouterLink>
-
-        <div class="nav-links">
-          <RouterLink
-            v-for="link in navLinks"
-            :key="link.label"
-            :to="link.to"
-            :class="['nav-link', { active: link.active }]"
-          >
-            {{ link.label }}
-          </RouterLink>
-        </div>
-
-        <RouterLink to="/profile" class="profile-button" aria-label="Профиль">
-          <span class="material-symbols-outlined">person</span>
-        </RouterLink>
-      </div>
-    </nav>
+    <SiteHeader />
 
     <main class="main-content">
       <section class="hero-section container">
         <div class="hero-content">
           <h1 class="hero-title">Найди кофе, который подходит именно тебе</h1>
           <p class="hero-description">
-            Откройте для себя сезонные вкусы и фирменные напитки, собранные для уютных утренних ритуалов и бодрых дневных пауз.
+            Откройте для себя сезонные вкусы и фирменные напитки, собранные для уютных
+            утренних ритуалов и бодрых дневных пауз.
           </p>
 
           <div class="hero-actions">
@@ -51,7 +33,8 @@
             <div>
               <h2 class="section-title">Сезонные напитки</h2>
               <p class="section-description">
-                Тщательно подобранные позиции сезона с выразительным вкусом, мягкой текстурой и настроением, которое хочется повторить.
+                Тщательно подобранные позиции сезона с выразительным вкусом, мягкой
+                текстурой и настроением, которое хочется повторить.
               </p>
             </div>
 
@@ -97,6 +80,87 @@
         </div>
       </section>
 
+      <section class="recommendations-section">
+        <div class="container">
+          <div class="section-header">
+            <div>
+              <h2 class="section-title">На основе ваших предпочтений</h2>
+              <p class="section-description">
+                Рекомендуем попробовать напитки по выбранным вами вкусовым тегам.
+              </p>
+            </div>
+
+            <RouterLink to="/profile" class="section-link">Настроить предпочтения →</RouterLink>
+          </div>
+
+          <div v-if="recommendationsLoading" class="seasonal-empty">
+            Подбираем рекомендации для вас...
+          </div>
+
+          <div v-else-if="recommendationsError" class="seasonal-empty">
+            {{ recommendationsError }}
+          </div>
+
+          <div v-else-if="!auth.isAuthenticated" class="seasonal-empty">
+            Войдите в аккаунт и выберите вкусовые предпочтения в профиле, чтобы увидеть
+            персональные рекомендации.
+          </div>
+
+          <div
+            v-else-if="!recommendedDrinks.length && !preferredTags.length"
+            class="seasonal-empty"
+          >
+            Выберите вкусовые предпочтения в профиле, и здесь появятся напитки под ваш вкус.
+          </div>
+
+          <div
+            v-else-if="!recommendedDrinks.length"
+            class="seasonal-empty"
+          >
+            Пока не нашли подходящие напитки по выбранным предпочтениям. Попробуйте изменить
+            теги в профиле.
+          </div>
+
+          <template v-else>
+            <div v-if="preferredTags.length" class="preference-tags">
+              <span
+                v-for="tag in preferredTags"
+                :key="tag"
+                class="preference-tag"
+              >
+                {{ tag }}
+              </span>
+            </div>
+
+            <div class="drinks-grid">
+              <RouterLink
+                v-for="drink in recommendedDrinks"
+                :key="`recommendation-${drink.id}`"
+                :to="`/drinks/${drink.slug}`"
+                class="drink-card drink-card--link"
+              >
+                <div class="drink-image-wrapper">
+                  <img class="drink-image" :src="drink.image" :alt="drink.title" />
+                </div>
+
+                <div class="drink-header">
+                  <h3 class="drink-title">{{ drink.title }}</h3>
+                  <span class="drink-price">{{ formatPrice(drink.price) }}</span>
+                </div>
+
+                <div class="drink-tags">
+                  <span v-for="tag in drink.tags" :key="tag" class="drink-tag">
+                    {{ tag }}
+                  </span>
+                </div>
+
+                <p class="drink-description">{{ drink.description }}</p>
+              </RouterLink>
+            </div>
+          </template>
+        </div>
+      </section>
+
       <section v-if="featuredDrink" class="highlight-section container">
         <div class="highlight-section-heading">
           <h2 class="highlight-section-title">Попробуйте сегодня</h2>
@@ -126,17 +190,7 @@
       </section>
     </main>
 
-    <footer class="site-footer">
-      <div class="container footer-inner">
-        <div class="footer-brand">YourCoffee</div>
-
-        <div class="footer-links">
-          <RouterLink to="/drinks" class="footer-link">Меню</RouterLink>
-        </div>
-
-        <div class="footer-copy">© 2026 YourCoffee.</div>
-      </div>
-    </footer>
+    <SiteFooter />
   </div>
 </template>
 
@@ -144,12 +198,13 @@
 import { computed, onMounted, ref } from "vue";
 import { RouterLink } from "vue-router";
 
+import SiteFooter from "@/components/SiteFooter.vue";
+import SiteHeader from "@/components/SiteHeader.vue";
 import { drinksApi } from "@/api/drinks.api";
+import { recommendationsApi } from "@/api/recommendations.api";
+import { useAuthStore } from "@/stores/auth";
 
-const navLinks = [
-  { label: "Главная", active: true, to: "/" },
-  { label: "Меню", active: false, to: "/drinks" },
-];
+const auth = useAuthStore();
 
 const heroImage =
   "https://lh3.googleusercontent.com/aida-public/AB6AXuADut2UHFuo3q4YdCqhlg7r3JtdEMMi_RH9_li7lJbx4r2YkXaRxw9a0TsR4viJQK5tcegJsqBDLkJ-GodtorYq-vGMCWH_0mu2dAcu1PLcxwngVYoQ3I6yKXySQBBr80yP-AxAp0B8pTUrp3oEd-ZL1nf-nsZhi_fYW1Se3b0cWnUvJC2jiqjkQevf0piM23wLsYk3wilbl4bhKOhs37ngAaCN-RFSnPJWlFP5xwwAqxB23rNH9Zpq3KvFUFyfoEoSOYeIvF7CbA";
@@ -157,6 +212,11 @@ const heroImage =
 const drinks = ref([]);
 const isLoading = ref(false);
 const loadError = ref("");
+
+const recommendedDrinks = ref([]);
+const preferredTags = ref([]);
+const recommendationsLoading = ref(false);
+const recommendationsError = ref("");
 
 const seasonalDrinks = computed(() =>
   drinks.value.filter((drink) => drink.is_seasonal).slice(0, 3),
@@ -176,6 +236,12 @@ const featuredDrink = computed(() => {
 });
 
 onMounted(async () => {
+  await auth.initAuth();
+
+  await Promise.all([loadSeasonalDrinks(), loadRecommendations()]);
+});
+
+async function loadSeasonalDrinks() {
   isLoading.value = true;
   loadError.value = "";
 
@@ -187,7 +253,30 @@ onMounted(async () => {
   } finally {
     isLoading.value = false;
   }
-});
+}
+
+async function loadRecommendations() {
+  recommendationsLoading.value = true;
+  recommendationsError.value = "";
+  recommendedDrinks.value = [];
+  preferredTags.value = [];
+
+  if (!auth.isAuthenticated) {
+    recommendationsLoading.value = false;
+    return;
+  }
+
+  try {
+    const data = await recommendationsApi.getRecommendations();
+    recommendedDrinks.value = data.recommendations.slice(0, 3);
+    preferredTags.value = data.preferredTags;
+  } catch (error) {
+    console.error(error);
+    recommendationsError.value = "Не удалось загрузить рекомендации.";
+  } finally {
+    recommendationsLoading.value = false;
+  }
+}
 
 function formatPrice(price) {
   return `${price} ₽`;
@@ -227,84 +316,6 @@ function formatPrice(price) {
   width: min(100%, 1320px);
   margin: 0 auto;
   padding: 0 56px;
-}
-
-.top-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 50;
-  width: 100%;
-  background: rgba(251, 251, 226, 0.7);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 10px 30px rgba(27, 29, 14, 0.05);
-}
-
-.nav-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  width: min(100%, 1180px);
-  margin: 0 auto;
-  padding-top: 18px;
-  padding-bottom: 18px;
-}
-
-.brand,
-.footer-brand {
-  font-family: "Noto Serif", serif;
-  color: #795437;
-}
-
-.brand {
-  font-size: 32px;
-  font-weight: 700;
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 40px;
-}
-
-.nav-link {
-  padding-bottom: 4px;
-  border-bottom: 2px solid transparent;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #636451;
-  transition: 0.3s ease;
-}
-
-.nav-link:hover,
-.nav-link.active {
-  color: #795437;
-}
-
-.nav-link.active {
-  border-bottom-color: #795437;
-}
-
-.profile-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  background: transparent;
-  color: #795437;
-  cursor: pointer;
-}
-
-.material-symbols-outlined {
-  font-family: "Material Symbols Outlined", sans-serif;
-  font-variation-settings:
-    "FILL" 0,
-    "wght" 400,
-    "GRAD" 0,
-    "opsz" 24;
 }
 
 .main-content {
@@ -404,9 +415,19 @@ function formatPrice(price) {
   object-fit: cover;
 }
 
+.seasonal-section,
+.recommendations-section {
+  padding: 80px 0;
+}
+
 .seasonal-section {
-  padding: 128px 0;
   background-color: #f5f5dc;
+}
+
+.recommendations-section {
+  background:
+    radial-gradient(circle at top right, rgba(239, 188, 152, 0.14), transparent 24%),
+    linear-gradient(180deg, #fbfbe2 0%, #f7f1dc 100%);
 }
 
 .section-header {
@@ -414,12 +435,13 @@ function formatPrice(price) {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  margin-bottom: 80px;
+  margin-bottom: 56px;
 }
 
 .section-title {
   margin-bottom: 16px;
   font-size: clamp(32px, 4vw, 56px);
+  color: #795437;
 }
 
 .section-description {
@@ -429,6 +451,10 @@ function formatPrice(price) {
 }
 
 .section-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -443,6 +469,27 @@ function formatPrice(price) {
   text-align: center;
 }
 
+.preference-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.preference-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(121, 84, 55, 0.12);
+  color: #795437;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 .drinks-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -454,6 +501,10 @@ function formatPrice(price) {
   background-color: #ffffff;
   border-radius: 26px;
   transition: box-shadow 0.3s ease;
+}
+
+.drink-card--link {
+  display: block;
 }
 
 .drink-card:hover {
@@ -521,8 +572,8 @@ function formatPrice(price) {
 }
 
 .highlight-section {
-  padding-top: 128px;
-  padding-bottom: 128px;
+  padding-top: 80px;
+  padding-bottom: 80px;
 }
 
 .highlight-section-heading {
@@ -575,6 +626,7 @@ function formatPrice(price) {
 .highlight-title {
   margin-bottom: 24px;
   font-size: clamp(32px, 4vw, 56px);
+  color: #795437;
 }
 
 .highlight-description {
@@ -595,46 +647,13 @@ function formatPrice(price) {
   font-style: italic;
 }
 
-.site-footer {
-  margin-top: 80px;
-  padding: 48px 0;
-  background-color: #f5f5dc;
-  border-top: 1px solid rgba(212, 195, 185, 0.3);
-}
-
-.footer-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 32px;
-}
-
-.footer-brand {
-  font-size: 24px;
-}
-
-.footer-links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 32px;
-}
-
-.footer-link,
-.footer-copy {
-  font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #636451;
-}
-
 @media (max-width: 1024px) {
   .container {
     padding: 0 24px;
   }
 
   .hero-section,
-  .highlight-card,
-  .footer-inner {
+  .highlight-card {
     grid-template-columns: 1fr;
     flex-direction: column;
   }
@@ -643,14 +662,10 @@ function formatPrice(price) {
     gap: 40px;
   }
 
-  .nav-links {
-    display: none;
-  }
-
   .section-header {
     flex-direction: column;
     align-items: flex-start;
-    margin-bottom: 48px;
+    margin-bottom: 32px;
   }
 
   .drinks-grid {
@@ -666,34 +681,24 @@ function formatPrice(price) {
     padding: 40px 24px;
   }
 
-  .footer-inner {
-    align-items: flex-start;
-  }
 }
 
 @media (max-width: 640px) {
-  .nav-inner {
-    padding-top: 18px;
-    padding-bottom: 18px;
-  }
-
-  .brand {
-    font-size: 24px;
-  }
-
   .main-content {
     padding-top: 104px;
   }
 
   .hero-section,
   .seasonal-section,
+  .recommendations-section,
   .highlight-section {
-    padding-bottom: 72px;
+    padding-bottom: 48px;
   }
 
   .seasonal-section,
+  .recommendations-section,
   .highlight-section {
-    padding-top: 72px;
+    padding-top: 48px;
   }
 
   .hero-actions,

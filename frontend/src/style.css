@@ -9,3 +9,9 @@ body {
 h1, h2, h3 {
   font-family: 'Noto Serif', serif;
 }
+
+.drink-price,
+.favorite-card__price,
+.highlight-price-current {
+  white-space: nowrap;
+}

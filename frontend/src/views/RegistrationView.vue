@@ -1,8 +1,6 @@
 <template>
   <div class="register-view">
-    <header class="register-header">
-      <RouterLink to="/" class="brand"> YourCoffee </RouterLink>
-    </header>
+    <SiteHeader />
 
     <main class="register-main">
       <section class="auth-card">
@@ -12,7 +10,7 @@
             role="tablist"
             aria-label="Authentication tabs"
           >
-            <RouterLink to="/login" class="auth-tab"> Вход </RouterLink>
+            <RouterLink to="/login" class="auth-tab">Вход</RouterLink>
             <RouterLink
               to="/registration"
               class="auth-tab auth-tab--active"
@@ -136,15 +134,16 @@
       </section>
     </main>
 
-    <footer class="page-footer">
-      <p>© 2026 YourCoffee. Для каждого свой.</p>
-    </footer>
+    <SiteFooter />
   </div>
 </template>
 
 <script setup>
+import SiteFooter from "@/components/SiteFooter.vue";
+import SiteHeader from "@/components/SiteHeader.vue";
+
 import { computed, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 
 const router = useRouter();
@@ -265,26 +264,12 @@ const handleSubmit = async () => {
   color: #1b1d0e;
 }
 
-.register-header {
-  padding: 32px 24px 0;
-  display: flex;
-  justify-content: center;
-}
-
-.brand {
-  color: #795437;
-  font-family: "Noto Serif", serif;
-  font-size: 32px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
 .register-main {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 16px 48px;
+  padding: 132px 16px 48px;
 }
 
 .auth-card {
@@ -465,119 +450,9 @@ const handleSubmit = async () => {
   line-height: 1;
 }
 
-.divider {
-  position: relative;
-  margin: 32px 0 24px;
-  text-align: center;
-}
-
-.divider::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 100%;
-  height: 1px;
-  background: rgba(212, 195, 185, 0.4);
-}
-
-.divider span {
-  position: relative;
-  display: inline-block;
-  padding: 0 16px;
-  background: #ffffff;
-  color: #82746c;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.social-auth {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.social-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border: 1px solid rgba(212, 195, 185, 0.5);
-  border-radius: 14px;
-  background: #f5f5dc;
-  color: #636451;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition:
-    background-color 0.2s ease,
-    border-color 0.2s ease;
-}
-
-.social-button:hover {
-  background: #e1e1c9;
-  border-color: rgba(121, 84, 55, 0.3);
-}
-
-.social-button__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  font-size: 16px;
-  line-height: 1;
-}
-
-.auth-footer {
-  margin-top: 24px;
-  text-align: center;
-}
-
-.auth-footer p {
-  margin: 0;
-  color: #82746c;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.auth-footer a {
-  color: #795437;
-}
-
-.auth-footer a:hover {
-  text-decoration: underline;
-}
-
-.page-footer {
-  padding: 0 24px 32px;
-  text-align: center;
-}
-
-.page-footer p {
-  margin: 0;
-  color: rgba(121, 84, 55, 0.7);
-  font-family: "Noto Serif", serif;
-  font-size: 14px;
-  font-style: italic;
-}
-
 @media (max-width: 640px) {
-  .register-header {
-    padding-top: 24px;
-  }
-
-  .brand {
-    font-size: 28px;
-  }
-
   .register-main {
-    padding: 24px 12px 40px;
+    padding: 112px 12px 40px;
   }
 
   .auth-tabs,
@@ -592,10 +467,6 @@ const handleSubmit = async () => {
 
   .auth-title {
     font-size: 30px;
-  }
-
-  .social-auth {
-    grid-template-columns: 1fr;
   }
 }
 </style>
