@@ -35,17 +35,9 @@ export async function getRecommendations(req, res) {
     const preferredTagNames = prefResult.rows.map((row) => row.name);
 
     if (preferredTagIds.length === 0) {
-      const fallback = await pool.query(
-        `
-          ${buildRecommendationSelect()}
-          GROUP BY d.id, c.name
-          ORDER BY d.id DESC
-          LIMIT 10
-        `
-      );
       return res.json({
         preferred_tags: [],
-        recommendations: fallback.rows,
+        recommendations: [],
       });
     }
 

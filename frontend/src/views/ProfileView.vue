@@ -29,6 +29,14 @@
                 <span>{{ joinedLabel }}</span>
               </div>
             </div>
+
+            <button
+              class="secondary-button secondary-button--logout"
+              type="button"
+              @click="handleLogout"
+            >
+              Выйти из аккаунта
+            </button>
           </section>
 
           <section class="panel">
@@ -77,6 +85,25 @@
               <p v-else-if="preferencesSuccess" class="panel-feedback panel-feedback--success">
                 {{ preferencesSuccess }}
               </p>
+
+              <button
+                v-if="!preferencesLoading && !isPreferencesEditorOpen"
+                class="panel-action-button panel-action-button--bottom"
+                :class="{ 'panel-action-button--icon': hasPreferences }"
+                type="button"
+                :aria-label="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
+                :title="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
+                @click="openPreferencesEditor"
+              >
+                <span
+                  v-if="hasPreferences"
+                  class="material-symbols-outlined panel-action-button__icon"
+                  aria-hidden="true"
+                >
+                  edit
+                </span>
+                <span v-else>Выбрать</span>
+              </button>
 
               <form
                 v-if="isPreferencesEditorOpen"
@@ -198,7 +225,7 @@
           <div v-else class="empty-state">
             <h3>Пока пусто</h3>
             <p>Добавьте напитки в избранное, и они появятся здесь.</p>
-            <RouterLink to="/drinks" class="secondary-button">Перейти в меню</RouterLink>
+            <RouterLink to="/" class="secondary-button">Перейти в меню</RouterLink>
           </div>
         </section>
       </div>
@@ -213,7 +240,7 @@ import { computed, onMounted, ref } from "vue";
 import SiteFooter from "@/components/SiteFooter.vue";
 import SiteHeader from "@/components/SiteHeader.vue";
 
-import { RouterLink } from "vue-router";
+import { RouterLink, useRouter } from "vue-router";
 
 import { preferencesApi } from "@/api/preferences.api";
 import { useAuthStore } from "@/stores/auth";
@@ -221,6 +248,7 @@ import { useFavoritesStore } from "@/stores/favorites";
 
 const auth = useAuthStore();
 const favorites = useFavoritesStore();
+const router = useRouter();
 
 const preferencesLoading = ref(false);
 const preferencesSaving = ref(false);
@@ -354,6 +382,11 @@ async function toggleFavorite(drink) {
 function formatPrice(price) {
   return `${Number(price) || 0} ₽`;
 }
+async function handleLogout() {
+  await auth.logout();
+  await router.push("/");
+}
+
 </script>
 
 <style scoped>
@@ -640,6 +673,14 @@ function formatPrice(price) {
   line-height: 1;
 }
 
+.panel-heading .panel-action-button {
+  display: none;
+}
+
+.panel-action-button--bottom {
+  margin-top: 20px;
+}
+
 .panel-note {
   font-size: 14px;
   line-height: 1.6;
@@ -912,6 +953,19 @@ function formatPrice(price) {
 .secondary-button--ghost {
   margin-top: 0;
   background: transparent;
+}
+
+.secondary-button--logout {
+  width: 100%;
+  margin-top: 24px;
+  border-color: rgba(186, 26, 26, 0.2);
+  color: #8f1d1d;
+}
+
+.secondary-button--logout:hover {
+  border-color: #8f1d1d;
+  background: #8f1d1d;
+  color: #fff;
 }
 
 .empty-state {

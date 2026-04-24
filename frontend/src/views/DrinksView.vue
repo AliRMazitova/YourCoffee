@@ -111,7 +111,7 @@
             </button>
           </div>
 
-          <div v-else class="drinks-grid">
+          <div v-else-if="filteredDrinks.length" class="drinks-grid">
             <article
               v-for="drink in filteredDrinks"
               :key="drink.id"
@@ -137,7 +137,7 @@
             </article>
           </div>
 
-          <div v-if="!isLoading && !loadError && !filteredDrinks.length" class="empty-state">
+          <div v-else class="empty-state">
             <h3>Ничего не найдено</h3>
             <p>Попробуйте ослабить фильтры или изменить выбранную температуру.</p>
             <button type="button" class="primary-button primary-button--compact" @click="resetFilters">
