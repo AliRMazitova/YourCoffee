@@ -43,22 +43,19 @@
             <div class="panel-heading">
               <h2 class="panel-title">Вкусовые предпочтения</h2>
               <button
-                v-if="!preferencesLoading"
-                class="panel-action-button"
-                :class="{ 'panel-action-button--icon': hasPreferences }"
+                v-if="!preferencesLoading && hasPreferences && !isPreferencesEditorOpen"
+                class="panel-action-button panel-action-button--icon"
                 type="button"
-                :aria-label="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
-                :title="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
+                aria-label="Редактировать вкусовые предпочтения"
+                title="Редактировать вкусовые предпочтения"
                 @click="openPreferencesEditor"
               >
                 <span
-                  v-if="hasPreferences"
                   class="material-symbols-outlined panel-action-button__icon"
                   aria-hidden="true"
                 >
                   edit
                 </span>
-                <span v-else>Выбрать</span>
               </button>
             </div>
 
@@ -87,22 +84,14 @@
               </p>
 
               <button
-                v-if="!preferencesLoading && !isPreferencesEditorOpen"
+                v-if="!preferencesLoading && !hasPreferences && !isPreferencesEditorOpen"
                 class="panel-action-button panel-action-button--bottom"
-                :class="{ 'panel-action-button--icon': hasPreferences }"
                 type="button"
-                :aria-label="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
-                :title="hasPreferences ? 'Редактировать вкусовые предпочтения' : 'Выбрать вкусовые предпочтения'"
+                aria-label="Выбрать вкусовые предпочтения"
+                title="Выбрать вкусовые предпочтения"
                 @click="openPreferencesEditor"
               >
-                <span
-                  v-if="hasPreferences"
-                  class="material-symbols-outlined panel-action-button__icon"
-                  aria-hidden="true"
-                >
-                  edit
-                </span>
-                <span v-else>Выбрать</span>
+                <span>Выбрать</span>
               </button>
 
               <form
@@ -225,7 +214,7 @@
           <div v-else class="empty-state">
             <h3>Пока пусто</h3>
             <p>Добавьте напитки в избранное, и они появятся здесь.</p>
-            <RouterLink to="/" class="secondary-button">Перейти в меню</RouterLink>
+            <RouterLink to="/drinks" class="secondary-button">Перейти в меню</RouterLink>
           </div>
         </section>
       </div>
@@ -671,10 +660,6 @@ async function handleLogout() {
 .panel-action-button__icon {
   font-size: 20px;
   line-height: 1;
-}
-
-.panel-heading .panel-action-button {
-  display: none;
 }
 
 .panel-action-button--bottom {
