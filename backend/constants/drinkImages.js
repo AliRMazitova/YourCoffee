@@ -1,0 +1,18 @@
+export const drinkImages = [
+  ['Эспрессо', '/uploads/drinks/espresso.png'],
+  ['Американо', '/uploads/drinks/americano.png'],
+  ['Капучино', '/uploads/drinks/cappuchino.png'],
+  ['Латте', '/uploads/drinks/latte.png'],
+  ['Флэт уайт', '/uploads/drinks/flatwhite.png'],
+  ['Раф классический', '/uploads/drinks/raf.png'],
+  ['Лавандовый раф', '/uploads/drinks/raf_lavanda.png'],
+  ['Малиновый латте', '/uploads/drinks/rasberry_latte.png'],
+  ['Джинджер', '/uploads/drinks/ginjer.png'],
+  ['Айс-латте', '/uploads/drinks/ice_latte.png'],
+  ['Эспрессо-тоник', '/uploads/drinks/espresso_tonic.png'],
+  ['Мэверик бамбл', '/uploads/drinks/meveric_bamble.png'],
+  ['Матча латте', '/uploads/drinks/matcha_latte.png'],
+  ['Какао', '/uploads/drinks/cacao.png'],
+  ['Розмари Голд', '/uploads/drinks/rosmary_gold.png'],
+  ['Пряный чай латте', '/uploads/drinks/prany_tea_latte.png'],
+];

@@ -6,6 +6,7 @@ import {
   getDrinkIngredients,
   getDrinkTags,
   getDrinkMoods,
+  getDrinkMilkOptions,
   getDrinkAddons,
   calculateDrinkPrice,
 } from '../controllers/drinksController.js';
@@ -17,6 +18,7 @@ router.get('/', getAllDrinks);
 router.get('/:id', getDrinkById);
 router.get('/:id/volumes', getDrinkVolumes);
 router.get('/:id/ingredients', getDrinkIngredients);
+router.get('/:id/milk-options', getDrinkMilkOptions);
 router.get('/:id/tags', getDrinkTags);
 router.get('/:id/moods', getDrinkMoods);
 router.get('/:id/addons', getDrinkAddons);

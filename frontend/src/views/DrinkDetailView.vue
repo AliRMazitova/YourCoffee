@@ -41,24 +41,60 @@
                 <h2>Выберите объем</h2>
               </div>
 
-              <div class="milk-grid">
+              <div class="choice-grid">
                 <button
                   v-for="volume in volumes"
                   :key="volume.id"
                   type="button"
-                  :class="['milk-option', { 'milk-option--active': selectedVolumeId === volume.id }]"
+                  :class="[
+                    'choice-button',
+                    'choice-button--volume',
+                    { 'choice-button--active': selectedVolumeId === volume.id },
+                  ]"
                   @click="selectedVolumeId = volume.id"
                 >
-                  <span class="material-symbols-outlined">local_cafe</span>
+                  <span class="choice-button__icon-bubble">
+                    <span class="material-symbols-outlined">local_cafe</span>
+                  </span>
                   <span>{{ volume.volume_name }} · {{ volume.ml }} мл</span>
                 </button>
               </div>
             </section>
 
-            <section v-if="addons.length" class="detail-section">
+            <section v-if="milkOptions.length" class="detail-card">
+              <div class="section-topline section-topline--compact">
+                <h2>Альтернативное молоко</h2>
+              </div>
+
+              <div class="choice-grid">
+                <button
+                  v-for="option in milkOptions"
+                  :key="option.id"
+                  type="button"
+                  :class="[
+                    'choice-button',
+                    'choice-button--milk',
+                    { 'choice-button--active': selectedMilkOptionId === option.id },
+                  ]"
+                  @click="selectedMilkOptionId = option.id"
+                >
+                  <span class="choice-button__icon-bubble">
+                    <i :class="getMilkIcon(option.displayName ?? option.name)" class="choice-button__icon" aria-hidden="true"></i>
+                  </span>
+                  <span class="choice-button__label choice-button__label--with-price">
+                    <span>{{ option.displayName ?? option.name }}</span>
+                    <small v-if="option.extraPrice" class="choice-button__price-inline">
+                      +{{ option.extraPrice }} &#8381;
+                    </small>
+                  </span>
+                </button>
+              </div>
+            </section>
+
+            <section v-if="addons.length" class="detail-section detail-section--tight">
               <div class="section-topline">
                 <h2>Добавки</h2>
-                <span>+40₽ к цене</span>
+                <span>+40 &#8381;</span>
               </div>
 
               <div class="chip-list">
@@ -66,9 +102,11 @@
                   v-for="addon in addons"
                   :key="addon.id"
                   type="button"
-                  class="chip-button"
+                  :class="['chip-button', { 'chip-button--active': selectedAddonIds.includes(addon.id) }]"
+                  :aria-pressed="selectedAddonIds.includes(addon.id)"
+                  @click="toggleAddon(addon.id)"
                 >
-                  {{ addon.name }}
+                  {{ addon.displayName ?? addon.name }}
                 </button>
               </div>
             </section>
@@ -76,7 +114,7 @@
             <div class="action-stack">
               <button type="button" class="primary-button">
                 <span class="material-symbols-outlined">shopping_bag</span>
-                Добавить в заказ — {{ selectedVolume?.priceLabel ?? drink.priceLabel }}
+                Итоговая цена — {{ totalPriceLabel }}
               </button>
 
               <button
@@ -101,16 +139,32 @@
 
             <ul class="ingredients-list">
               <li
-                v-for="ingredient in currentIngredients"
-                :key="`${ingredient.drink_volume_id}-${ingredient.ingredient_id}`"
+                v-for="ingredient in displayIngredients"
+                :key="`${ingredient.drink_volume_id ?? 'addon'}-${ingredient.ingredient_id}`"
               >
                 <span class="dot"></span>
                 <span>
                   {{ ingredient.name }}
                   <template v-if="ingredient.amount_g"> — {{ ingredient.amount_g }} г</template>
+                  <template v-else-if="ingredient.isAddon"> · добавка</template>
                 </span>
               </li>
             </ul>
+
+            <div class="allergens-block">
+              <p class="allergens-label">Возможные аллергены</p>
+              <div class="allergens-heading">
+                <span class="material-symbols-outlined">warning</span>
+                <p class="allergens-label">Р’РѕР·РјРѕР¶РЅС‹Рµ Р°Р»Р»РµСЂРіРµРЅС‹</p>
+              </div>
+              <ul v-if="allergens.length" class="allergen-ingredients-list">
+                <li v-for="allergen in allergens" :key="allergen">
+                  <span class="dot dot--warning"></span>
+                  <span>{{ allergen }}</span>
+                </li>
+              </ul>
+              <p v-else class="allergens-note">Явные аллергены в текущем составе не указаны.</p>
+            </div>
           </article>
 
           <article class="nutrition-card">
@@ -140,7 +194,7 @@ import SiteHeader from "@/components/SiteHeader.vue";
 
 import { RouterLink, useRoute } from "vue-router";
 
-import { drinksApi } from "@/api/drinks.api";
+import { drinksApi, filterDisplayTags, pickDisplayTags } from "@/api/drinks.api";
 import { useAuthStore } from "@/stores/auth";
 import { useFavoritesStore } from "@/stores/favorites";
 
@@ -150,15 +204,38 @@ const favorites = useFavoritesStore();
 
 const drink = ref(null);
 const volumes = ref([]);
+const milkOptions = ref([]);
 const addons = ref([]);
 const ingredients = ref([]);
 const selectedVolumeId = ref(null);
+const selectedMilkOptionId = ref(null);
+const selectedAddonIds = ref([]);
 const isLoading = ref(false);
 const loadError = ref("");
 
 const selectedVolume = computed(
   () => volumes.value.find((volume) => volume.id === selectedVolumeId.value) ?? null,
 );
+
+const selectedAddons = computed(() =>
+  addons.value.filter((addon) => selectedAddonIds.value.includes(addon.id)),
+);
+
+const selectedMilkOption = computed(
+  () => milkOptions.value.find((option) => option.id === selectedMilkOptionId.value) ?? null,
+);
+
+const basePrice = computed(() => selectedVolume.value?.price ?? drink.value?.price ?? 0);
+
+const milkTotalPrice = computed(() => selectedMilkOption.value?.extraPrice ?? 0);
+
+const addonsTotalPrice = computed(() =>
+  selectedAddons.value.reduce((total, addon) => total + Number(addon.price || 0), 0),
+);
+
+const totalPrice = computed(() => basePrice.value + milkTotalPrice.value + addonsTotalPrice.value);
+
+const totalPriceLabel = computed(() => formatPrice(totalPrice.value));
 
 const currentIngredients = computed(() => {
   if (!selectedVolume.value) {
@@ -170,9 +247,51 @@ const currentIngredients = computed(() => {
   );
 });
 
-const nutritionRows = computed(
-  () => selectedVolume.value?.nutrition ?? [],
+const displayIngredients = computed(() => [
+  ...currentIngredients.value,
+  ...selectedAddons.value.map((addon) => ({
+    ingredient_id: addon.id,
+    name: addon.displayName ?? addon.name,
+    allergens: addon.allergens ?? [],
+    isAddon: true,
+  })),
+]);
+
+const allergens = computed(() => {
+  const values = new Set();
+
+  for (const ingredient of displayIngredients.value) {
+    for (const allergen of ingredient.allergens ?? []) {
+      const normalizedAllergen = String(allergen ?? "").trim();
+      if (normalizedAllergen) {
+        values.add(normalizedAllergen);
+      }
+    }
+  }
+
+  return [...values];
+});
+
+const nutritionTotals = computed(() =>
+  currentIngredients.value.reduce(
+    (total, ingredient) => {
+      const ratio = (Number(ingredient.amount_g) || 0) / 100;
+      total.calories += (Number(ingredient.calories) || 0) * ratio;
+      total.protein += (Number(ingredient.protein) || 0) * ratio;
+      total.fat += (Number(ingredient.fat) || 0) * ratio;
+      total.carbs += (Number(ingredient.carbs) || 0) * ratio;
+      return total;
+    },
+    { calories: 0, protein: 0, fat: 0, carbs: 0 },
+  ),
 );
+
+const nutritionRows = computed(() => [
+  { label: "Калории", value: formatNutritionValue(nutritionTotals.value.calories) },
+  { label: "Белки", value: `${formatNutritionValue(nutritionTotals.value.protein)} г` },
+  { label: "Жиры", value: `${formatNutritionValue(nutritionTotals.value.fat)} г` },
+  { label: "Углеводы", value: `${formatNutritionValue(nutritionTotals.value.carbs)} г` },
+]);
 
 const detailDescription = computed(
   () => drink.value?.shortDescription ?? drink.value?.description ?? "",
@@ -188,10 +307,17 @@ const isFavorite = computed(() => {
 
 const servingNote = computed(() => {
   if (!selectedVolume.value) {
-    return "Данные указаны для стандартной порции напитка.";
+    return "Пищевая ценность рассчитана по текущему составу напитка.";
   }
 
-  return `Значения рассчитаны для объёма ${selectedVolume.value.volume_name} (${selectedVolume.value.ml} мл).`;
+  const milkNote = selectedMilkOption.value
+    ? ` и молока ${String(selectedMilkOption.value.displayName ?? selectedMilkOption.value.name).toLowerCase()}`
+    : "";
+  const addonNote = selectedAddons.value.length
+    ? " Дополнительные сиропы в БЖУ не включены."
+    : "";
+
+  return `Значения рассчитаны для объёма ${selectedVolume.value.volume_name} (${selectedVolume.value.ml} мл)${milkNote}.${addonNote}`;
 });
 
 onMounted(async () => {
@@ -205,13 +331,13 @@ watch(
   },
 );
 
-watch(selectedVolumeId, async (volumeId) => {
-  if (!drink.value || !volumeId) {
+watch([selectedVolumeId, selectedMilkOptionId], async ([volumeId]) => {
+  if (isLoading.value || !drink.value || !volumeId) {
     return;
   }
 
   try {
-    ingredients.value = await drinksApi.getDrinkIngredients(drink.value.id, volumeId);
+    await loadIngredientsForSelection();
   } catch (error) {
     console.error(error);
   }
@@ -222,9 +348,12 @@ async function loadDrinkDetails() {
   loadError.value = "";
   drink.value = null;
   volumes.value = [];
+  milkOptions.value = [];
   addons.value = [];
   ingredients.value = [];
   selectedVolumeId.value = null;
+  selectedMilkOptionId.value = null;
+  selectedAddonIds.value = [];
 
   try {
     const summary = await drinksApi.getDrinkBySlug(route.params.slug);
@@ -234,22 +363,25 @@ async function loadDrinkDetails() {
       return;
     }
 
-    const [drinkData, drinkVolumes, drinkAddons, drinkTags] = await Promise.all([
+    const [drinkData, drinkVolumes, drinkMilkOptions, drinkAddons, drinkTags] = await Promise.all([
       drinksApi.getDrinkById(summary.id),
       drinksApi.getDrinkVolumes(summary.id),
+      drinksApi.getDrinkMilkOptions(summary.id),
       drinksApi.getDrinkAddons(summary.id),
       drinksApi.getDrinkTags(summary.id),
     ]);
 
     drink.value = {
       ...drinkData,
-      badges: drinkTags.map((tag) => tag.name),
-      tags: drinkTags.map((tag) => tag.name),
+      badges: pickDisplayTags(drinkTags.map((tag) => tag.name)),
+      tags: filterDisplayTags(drinkTags.map((tag) => tag.name)),
     };
     volumes.value = drinkVolumes;
+    milkOptions.value = drinkMilkOptions;
     addons.value = drinkAddons;
     selectedVolumeId.value = drinkVolumes[0]?.id ?? null;
-    ingredients.value = await drinksApi.getDrinkIngredients(summary.id, selectedVolumeId.value);
+    selectedMilkOptionId.value = drinkMilkOptions[0]?.id ?? null;
+    await loadIngredientsForSelection(summary.id);
   } catch (error) {
     console.error(error);
     loadError.value = "Не удалось загрузить карточку напитка из базы данных.";
@@ -258,8 +390,53 @@ async function loadDrinkDetails() {
   }
 }
 
+async function loadIngredientsForSelection(forcedDrinkId = drink.value?.id) {
+  if (!forcedDrinkId || !selectedVolumeId.value) {
+    ingredients.value = [];
+    return;
+  }
+
+  ingredients.value = await drinksApi.getDrinkIngredients(
+    forcedDrinkId,
+    selectedVolumeId.value,
+    selectedMilkOptionId.value,
+  );
+}
+
 function formatPrice(price) {
   return `${price} ₽`;
+}
+
+function formatNutritionValue(value) {
+  const numericValue = Number(value) || 0;
+  const roundedValue = Math.round(numericValue * 10) / 10;
+
+  return Number.isInteger(roundedValue)
+    ? `${roundedValue}`
+    : roundedValue.toFixed(1).replace(/\.0$/, "");
+}
+
+function getMilkIcon(optionName) {
+  const normalizedName = String(optionName ?? "").toLowerCase();
+
+  if (normalizedName.includes("кокос")) {
+    return "mdi mdi-palm-tree";
+  }
+
+  if (normalizedName.includes("овс")) {
+    return "mdi mdi-barley";
+  }
+
+  return "mdi mdi-cup-water";
+}
+
+function toggleAddon(addonId) {
+  if (selectedAddonIds.value.includes(addonId)) {
+    selectedAddonIds.value = selectedAddonIds.value.filter((id) => id !== addonId);
+    return;
+  }
+
+  selectedAddonIds.value = [...selectedAddonIds.value, addonId];
 }
 
 async function toggleFavorite() {
@@ -305,7 +482,7 @@ async function toggleFavorite() {
 }
 
 .shell {
-  width: min(100%, 1320px);
+  width: min(100%, 1250px);
   margin: 0 auto;
   padding: 0 40px;
 }
@@ -385,7 +562,7 @@ async function toggleFavorite() {
 
 .profile-button,
 .back-link,
-.milk-option,
+.choice-button,
 .chip-button,
 .primary-button,
 .secondary-button {
@@ -560,32 +737,95 @@ async function toggleFavorite() {
   line-height: 1.5;
 }
 
-.milk-grid {
+.choice-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
-.milk-option {
+.choice-button {
+  position: relative;
   flex-direction: column;
-  gap: 8px;
-  min-height: 92px;
+  align-items: stretch;
+  gap: 6px;
+  min-height: 84px;
+  padding: 12px;
   border: 1px solid rgba(130, 116, 108, 0.28);
-  border-radius: 18px;
+  border-radius: 16px;
   background: rgba(255, 255, 255, 0.86);
   color: #636451;
   cursor: pointer;
   transition: 0.2s ease;
 }
 
-.milk-option span:last-child {
+.choice-button__icon-bubble {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: #795437;
+}
+
+.choice-button__icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.choice-button > span:last-child,
+.choice-button small {
   font-size: 13px;
   font-weight: 600;
   text-align: center;
 }
 
-.milk-option--active,
-.milk-option:hover {
+.choice-button__label {
+  line-height: 1.35;
+}
+
+.choice-button__label--with-price {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.choice-button__price-inline {
+  color: #795437;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.choice-button--volume {
+  justify-content: center;
+}
+
+.choice-button--volume .choice-button__icon-bubble {
+  margin: 0 auto;
+}
+
+.choice-button--milk {
+  justify-content: center;
+}
+
+.choice-button--milk .choice-button__icon-bubble {
+  margin: 0 auto;
+}
+
+.choice-button--active .choice-button__icon-bubble,
+.choice-button:hover .choice-button__icon-bubble {
+  color: #ffffff;
+}
+
+.choice-button--active .choice-button__price-inline,
+.choice-button:hover .choice-button__price-inline {
+  color: #ffffff;
+}
+
+.choice-button--active,
+.choice-button:hover {
   border-color: #795437;
   background: #795437;
   color: #ffffff;
@@ -595,6 +835,14 @@ async function toggleFavorite() {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.detail-section--tight {
+  gap: 0;
+}
+
+.detail-section--tight .section-topline {
+  margin-bottom: 10px;
 }
 
 .chip-list {
@@ -620,6 +868,12 @@ async function toggleFavorite() {
 .chip-button:hover {
   border-color: #795437;
   color: #795437;
+}
+
+.chip-button--active {
+  border-color: #795437;
+  background: #795437;
+  color: #ffffff;
 }
 
 .action-stack {
@@ -712,10 +966,72 @@ async function toggleFavorite() {
   font-weight: 500;
 }
 
+.allergens-block {
+  margin-top: 24px;
+  padding-top: 18px;
+}
+
+.allergens-heading {
+  display: none;
+}
+
+.allergens-block > .allergens-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.allergens-block > .allergens-label::before {
+  content: "\26A0";
+  color: #795437;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.allergens-label {
+  margin: 0;
+  color: #795437;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.allergen-ingredients-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.allergen-ingredients-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(212, 195, 185, 0.24);
+  color: #1b1d0e;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.allergens-note {
+  margin: 10px 0 0;
+  color: #636451;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .dot {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  background: #956c4d;
+}
+
+.dot--warning {
   background: #956c4d;
 }
 
@@ -799,7 +1115,7 @@ async function toggleFavorite() {
     grid-template-columns: 1fr;
   }
 
-  .milk-grid {
+  .choice-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -841,7 +1157,7 @@ async function toggleFavorite() {
     border-radius: 22px;
   }
 
-  .milk-grid {
+  .choice-grid {
     grid-template-columns: 1fr;
   }
 

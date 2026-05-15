@@ -17,7 +17,7 @@
 }
 
 .container {
-  width: min(100%, 1320px);
+  width: min(100%, 1250px);
   margin: 0 auto;
   padding: 0 56px;
 }

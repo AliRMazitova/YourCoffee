@@ -11,8 +11,8 @@ export const preferencesApi = {
     return data;
   },
 
-  async getTags() {
-    const { data } = await http.get("/tags");
+  async getTags(params = { scope: "user" }) {
+    const { data } = await http.get("/tags", { params });
     return data;
   },
 };

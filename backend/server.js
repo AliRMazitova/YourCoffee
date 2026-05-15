@@ -14,6 +14,8 @@ import categoriesRoutes from './routes/categories.js';
 import tagsRoutes from './routes/tags.js';
 import moodsRoutes from './routes/moods.js';
 import ingredientsRoutes from './routes/ingredients.js';
+import pool from './config/db.js';
+import { syncDrinkImages } from './services/drinkImageSync.js';
 import { notFoundHandler, errorHandler } from './middleware/errorMiddleware.js';
 
 dotenv.config();
@@ -57,6 +59,19 @@ app.use('/api/ingredients', ingredientsRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-});
+async function bootstrap() {
+  try {
+    const updated = await syncDrinkImages(pool);
+    if (updated > 0) {
+      console.log(`Backfilled ${updated} drink image URLs`);
+    }
+  } catch (error) {
+    console.warn(`Drink image sync skipped: ${error.message}`);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server listening on port ${PORT}`);
+  });
+}
+
+bootstrap();

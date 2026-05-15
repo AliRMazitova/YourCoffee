@@ -12,4 +12,20 @@ export const recommendationsApi = {
         : [],
     };
   },
+
+  async getWeatherRecommendations(params = {}) {
+    const { data } = await http.get("/recommendations/weather", { params });
+
+    return {
+      ...data,
+      recommendations: Array.isArray(data?.recommendations)
+        ? data.recommendations.map(mapDrinkSummary)
+        : [],
+    };
+  },
+
+  async getMoods() {
+    const { data } = await http.get("/moods");
+    return Array.isArray(data) ? data : [];
+  },
 };

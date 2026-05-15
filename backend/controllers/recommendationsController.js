@@ -1,4 +1,6 @@
 import pool from '../config/db.js';
+import { buildWeatherRecommendationPayload } from '../services/weatherExpertSystem.js';
+import { getCurrentKazanWeather } from '../services/weatherService.js';
 
 function buildRecommendationSelect() {
   return `
@@ -17,6 +19,35 @@ function buildRecommendationSelect() {
     LEFT JOIN drink_tags dt ON dt.drink_id = d.id
     LEFT JOIN tags t ON t.id = dt.tag_id
   `;
+}
+
+async function getMoodContext(moodId) {
+  if (!Number.isFinite(moodId)) {
+    return { mood: null, drinkIds: [] };
+  }
+
+  const moodResult = await pool.query(
+    `SELECT id, name
+     FROM moods
+     WHERE id = $1`,
+    [moodId]
+  );
+
+  if (moodResult.rows.length === 0) {
+    return { mood: null, drinkIds: [] };
+  }
+
+  const drinkResult = await pool.query(
+    `SELECT drink_id
+     FROM drink_moods
+     WHERE mood_id = $1`,
+    [moodId]
+  );
+
+  return {
+    mood: moodResult.rows[0],
+    drinkIds: drinkResult.rows.map((row) => Number(row.drink_id)),
+  };
 }
 
 export async function getRecommendations(req, res) {
@@ -88,22 +119,82 @@ export async function getRecommendationsByMood(req, res) {
   }
 
   try {
+    const moodContext = await getMoodContext(moodId);
+
+    if (!moodContext.mood) {
+      return res.status(404).json({ error: 'Mood not found' });
+    }
+
     const result = await pool.query(
-      `SELECT d.*
-       FROM drinks d
-       JOIN drink_moods dm ON dm.drink_id = d.id
-       WHERE dm.mood_id = $1
-       ORDER BY d.id`,
+      `
+       ${buildRecommendationSelect()}
+       WHERE EXISTS (
+         SELECT 1
+         FROM drink_moods dm
+         WHERE dm.drink_id = d.id
+           AND dm.mood_id = $1
+       )
+       GROUP BY d.id, c.name
+       ORDER BY d.id
+      `,
       [moodId]
     );
 
     return res.json({
       mood_id: moodId,
+      mood_name: moodContext.mood.name,
       recommendations: result.rows,
     });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to get mood recommendations' });
+  }
+}
+
+export async function getWeatherRecommendations(req, res) {
+  const moodId =
+    req.query.mood_id === undefined ? null : Number(req.query.mood_id);
+  const refresh = String(req.query.refresh || '').trim().toLowerCase() === 'true';
+
+  if (req.query.mood_id !== undefined && !Number.isFinite(moodId)) {
+    return res.status(400).json({ error: 'mood_id must be a number' });
+  }
+
+  try {
+    const [weather, drinksResult, moodContext] = await Promise.all([
+      getCurrentKazanWeather({ forceRefresh: refresh }),
+      pool.query(
+        `
+          ${buildRecommendationSelect()}
+          GROUP BY d.id, c.name
+          ORDER BY d.id
+        `
+      ),
+      getMoodContext(moodId)
+    ]);
+
+    if (moodId !== null && !moodContext.mood) {
+      return res.status(404).json({ error: 'Mood not found' });
+    }
+
+    const payload = buildWeatherRecommendationPayload(
+      weather,
+      drinksResult.rows,
+      {
+        mood: moodContext.mood,
+        moodDrinkIds: moodContext.drinkIds,
+      }
+    );
+
+    return res.json({
+      mode: 'weather',
+      mood_id: moodContext.mood?.id ?? null,
+      mood_name: moodContext.mood?.name ?? null,
+      ...payload,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to get weather recommendations' });
   }
 }
 

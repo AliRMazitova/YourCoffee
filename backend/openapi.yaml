@@ -80,7 +80,7 @@ paths:
   /api/drinks/calculate:
     post:
       tags: [Drinks]
-      summary: Рассчитать цену напитка по объёму и разрешённым добавкам
+      summary: Рассчитать цену напитка по объёму, молоку и разрешённым добавкам
 
   /api/drinks/{id}:
     get:
@@ -109,6 +109,7 @@ paths:
       description: |
         Возвращает ингредиенты из `drink_volume_ingredients`.
         Можно передать `volume_id`, чтобы получить состав только для одного объёма.
+        Параметр `milk_option_id` подменяет базовое молоко на выбранный альтернативный вариант.
       parameters:
         - in: path
           name: id
@@ -117,6 +118,20 @@ paths:
         - in: query
           name: volume_id
           required: false
+          schema: { type: integer }
+        - in: query
+          name: milk_option_id
+          required: false
+          schema: { type: integer }
+
+  /api/drinks/{id}/milk-options:
+    get:
+      tags: [Drinks]
+      summary: Доступные варианты молока для напитка
+      parameters:
+        - in: path
+          name: id
+          required: true
           schema: { type: integer }
 
   /api/drinks/{id}/tags:

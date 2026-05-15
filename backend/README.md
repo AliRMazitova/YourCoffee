@@ -39,9 +39,10 @@ Server runs on `http://localhost:5000`.
   - list and filters
   - details
   - volumes with nutrition from `drink_volume_nutrition`
-  - ingredients from `drink_volume_ingredients`
+  - ingredients from `drink_volume_ingredients` with allergens
+  - milk options for drinks with a milk base
   - tags, moods, addons
-  - price calculation for a selected volume and allowed addons only
+  - price calculation for a selected volume, milk option, and allowed addons
 - Favorites, preferences, recommendations
 - Basic security:
   - `helmet` for safe headers
@@ -59,5 +60,6 @@ Server runs on `http://localhost:5000`.
 ## Local images
 
 - Put drink photos into `backend/uploads/drinks/`
-- Save the file path in `drinks.image_url`, for example `/uploads/drinks/cappuccino.jpg`
+- The seed in `sql/init.sql` fills `drinks.image_url` automatically
+- To repair an existing database with empty image URLs, run `npm run sync:drink-images`
 - Backend serves everything from `backend/uploads` at the `/uploads` URL

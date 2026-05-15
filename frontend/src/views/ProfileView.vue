@@ -201,10 +201,10 @@
 
                 <p class="favorite-card__description">{{ drink.description || "Описание появится позже." }}</p>
 
-                <div v-if="drink.tags?.length" class="favorite-card__tags">
-                  <template v-for="(tag, index) in drink.tags" :key="`${drink.id}-${tag}`">
+                <div v-if="drink.badges?.length" class="favorite-card__tags">
+                  <template v-for="(tag, index) in drink.badges" :key="`${drink.id}-${tag}`">
                     <span>{{ tag }}</span>
-                    <span v-if="index < drink.tags.length - 1" class="favorite-card__separator">•</span>
+                    <span v-if="index < drink.badges.length - 1" class="favorite-card__separator">•</span>
                   </template>
                 </div>
               </div>

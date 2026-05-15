@@ -38,6 +38,57 @@ function parseNumParam(value) {
   return Number.isFinite(n) ? n : null;
 }
 
+async function findSelectedMilkOption(drinkId, milkOptionId) {
+  if (milkOptionId === null) {
+    return null;
+  }
+
+  const result = await pool.query(
+    `SELECT i.id, i.name, i.price, i.type, i.is_optional,
+            i.calories, i.protein, i.fat, i.carbs,
+            COALESCE(i.allergens, '{}') AS allergens,
+            dmo.extra_price
+     FROM drink_milk_options dmo
+     JOIN ingredients i ON i.id = dmo.ingredient_id
+     WHERE dmo.drink_id = $1
+       AND i.id = $2
+     LIMIT 1`,
+    [drinkId, milkOptionId]
+  );
+
+  return result.rows[0] ?? null;
+}
+
+function applyMilkOptionToIngredients(rows, milkOption) {
+  return rows.map((row) => {
+    const normalizedRow = {
+      ...row,
+      allergens: Array.isArray(row.allergens) ? row.allergens : [],
+    };
+
+    if (!milkOption || normalizedRow.type !== 'milk') {
+      return normalizedRow;
+    }
+
+    return {
+      ...normalizedRow,
+      ingredient_id: milkOption.id,
+      name: milkOption.name,
+      price: milkOption.price,
+      type: milkOption.type,
+      is_optional: milkOption.is_optional,
+      calories: milkOption.calories,
+      protein: milkOption.protein,
+      fat: milkOption.fat,
+      carbs: milkOption.carbs,
+      allergens: Array.isArray(milkOption.allergens) ? milkOption.allergens : [],
+      base_ingredient_id: row.ingredient_id,
+      milk_extra_price: milkOption.extra_price,
+      is_milk_option: true,
+    };
+  });
+}
+
 export async function getAllDrinks(req, res) {
   const category = parseIntParam(req.query.category);
   const tag = parseIntParam(req.query.tag);
@@ -173,6 +224,10 @@ export async function getDrinkIngredients(req, res) {
   const id = Number(req.params.id);
   const volumeId =
     req.query.volume_id === undefined ? null : Number(req.query.volume_id);
+  const milkOptionId =
+    req.query.milk_option_id === undefined
+      ? null
+      : parseIntParam(req.query.milk_option_id);
 
   if (!Number.isFinite(id)) {
     return res.status(400).json({ error: 'Invalid id' });
@@ -180,9 +235,23 @@ export async function getDrinkIngredients(req, res) {
   if (req.query.volume_id !== undefined && !Number.isFinite(volumeId)) {
     return res.status(400).json({ error: 'volume_id must be a number' });
   }
+  if (req.query.milk_option_id !== undefined && milkOptionId === null) {
+    return res.status(400).json({ error: 'milk_option_id must be a number' });
+  }
 
   try {
+    let selectedMilkOption = null;
     let result;
+
+    if (milkOptionId !== null) {
+      selectedMilkOption = await findSelectedMilkOption(id, milkOptionId);
+
+      if (!selectedMilkOption) {
+        return res.status(400).json({
+          error: 'Selected milk option is unavailable for this drink',
+        });
+      }
+    }
 
     if (volumeId === null) {
       result = await pool.query(
@@ -193,7 +262,9 @@ export async function getDrinkIngredients(req, res) {
                 v.ml,
                 dvi.ingredient_id,
                 dvi.amount_g,
-                i.name, i.price, i.type, i.is_optional
+                i.name, i.price, i.type, i.is_optional,
+                i.calories, i.protein, i.fat, i.carbs,
+                COALESCE(i.allergens, '{}') AS allergens
          FROM drink_volumes dv
          JOIN volumes v ON v.id = dv.volume_id
          JOIN drink_volume_ingredients dvi ON dvi.drink_volume_id = dv.id
@@ -231,7 +302,9 @@ export async function getDrinkIngredients(req, res) {
                 v.ml,
                 dvi.ingredient_id,
                 dvi.amount_g,
-                i.name, i.price, i.type, i.is_optional
+                i.name, i.price, i.type, i.is_optional,
+                i.calories, i.protein, i.fat, i.carbs,
+                COALESCE(i.allergens, '{}') AS allergens
          FROM selected_volume sv
          JOIN drink_volumes dv ON dv.id = sv.id
          JOIN volumes v ON v.id = dv.volume_id
@@ -242,7 +315,7 @@ export async function getDrinkIngredients(req, res) {
       );
     }
 
-    return res.json(result.rows);
+    return res.json(applyMilkOptionToIngredients(result.rows, selectedMilkOption));
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: 'Failed to fetch ingredients' });
@@ -293,6 +366,31 @@ export async function getDrinkMoods(req, res) {
   }
 }
 
+export async function getDrinkMilkOptions(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isFinite(id)) {
+    return res.status(400).json({ error: 'Invalid id' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT i.id, i.name, i.price, i.type, i.is_optional,
+              i.calories, i.protein, i.fat, i.carbs,
+              COALESCE(i.allergens, '{}') AS allergens,
+              dmo.extra_price
+       FROM drink_milk_options dmo
+       JOIN ingredients i ON i.id = dmo.ingredient_id
+       WHERE dmo.drink_id = $1
+       ORDER BY dmo.extra_price, CASE WHEN i.name = 'Молоко' THEN 0 ELSE 1 END, i.name`,
+      [id]
+    );
+    return res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Failed to fetch milk options' });
+  }
+}
+
 export async function getDrinkAddons(req, res) {
   const id = Number(req.params.id);
   if (!Number.isFinite(id)) {
@@ -302,7 +400,8 @@ export async function getDrinkAddons(req, res) {
   try {
     const result = await pool.query(
       `SELECT i.id, i.name, i.price, i.type, i.is_optional,
-              i.calories, i.protein, i.fat, i.carbs
+              i.calories, i.protein, i.fat, i.carbs,
+              COALESCE(i.allergens, '{}') AS allergens
        FROM drink_addons da
        JOIN ingredients i ON i.id = da.ingredient_id
        WHERE da.drink_id = $1
@@ -319,6 +418,12 @@ export async function getDrinkAddons(req, res) {
 export async function calculateDrinkPrice(req, res) {
   const drinkId = Number(req.body.drink_id);
   const volumeId = Number(req.body.volume_id);
+  const milkOptionId =
+    req.body.milk_option_id === undefined ||
+    req.body.milk_option_id === null ||
+    req.body.milk_option_id === ''
+      ? null
+      : Number(req.body.milk_option_id);
   const extraIngredientIds = Array.isArray(req.body.ingredients)
     ? [...new Set(req.body.ingredients.map((x) => Number(x)).filter((x) => Number.isFinite(x)))]
     : [];
@@ -328,8 +433,21 @@ export async function calculateDrinkPrice(req, res) {
       error: 'drink_id and volume_id are required and must be numbers',
     });
   }
+  if (req.body.milk_option_id !== undefined && milkOptionId !== null && !Number.isFinite(milkOptionId)) {
+    return res.status(400).json({
+      error: 'milk_option_id must be a number',
+    });
+  }
 
   try {
+    const selectedMilkOption = await findSelectedMilkOption(drinkId, milkOptionId);
+
+    if (milkOptionId !== null && !selectedMilkOption) {
+      return res.status(400).json({
+        error: 'Selected milk option is unavailable for this drink',
+      });
+    }
+
     const volRow = await pool.query(
       `WITH selected_volume AS (
          SELECT dv.id, dv.volume_id, dv.price
@@ -361,6 +479,7 @@ export async function calculateDrinkPrice(req, res) {
     }
 
     const basePrice = Number(volRow.rows[0].price);
+    const milkExtraPrice = Number(selectedMilkOption?.extra_price ?? 0);
     let extrasTotal = 0;
     const extrasBreakdown = [];
 
@@ -391,13 +510,21 @@ export async function calculateDrinkPrice(req, res) {
       }
     }
 
-    const total = basePrice + extrasTotal;
+    const total = basePrice + milkExtraPrice + extrasTotal;
 
     return res.json({
       drink_id: drinkId,
       volume_id: volRow.rows[0].volume_id,
       drink_volume_id: volRow.rows[0].drink_volume_id,
       base_price: basePrice,
+      milk_option: selectedMilkOption
+        ? {
+            ingredient_id: selectedMilkOption.id,
+            name: selectedMilkOption.name,
+            extra_price: milkExtraPrice,
+          }
+        : null,
+      milk_extra_price: milkExtraPrice,
       extras: extrasBreakdown,
       extras_total: extrasTotal,
       total,

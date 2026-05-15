@@ -44,7 +44,7 @@
                   v-model="form.email"
                   class="form-input"
                   type="email"
-                  placeholder="you@yourcoffee.com"
+                  placeholder="example@example.com"
                   autocomplete="email"
                 />
               </div>
@@ -52,7 +52,6 @@
               <div class="form-field">
                 <div class="form-field__head">
                   <label class="form-label" for="password">Пароль</label>
-                  <a href="#" class="form-link">Забыли пароль?</a>
                 </div>
 
                 <input

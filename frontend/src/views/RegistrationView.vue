@@ -56,7 +56,7 @@
                   class="form-input"
                   :class="{ 'form-input--error': touched.email && emailError }"
                   type="email"
-                  placeholder="ritualist@yourcoffee.com"
+                  placeholder="example@example.com"
                   autocomplete="email"
                   @blur="touched.email = true"
                 />

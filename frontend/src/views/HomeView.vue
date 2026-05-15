@@ -5,7 +5,12 @@
     <main class="main-content">
       <section class="hero-section container">
         <div class="hero-content">
-          <h1 class="hero-title">Найди кофе, который подходит именно тебе</h1>
+          <h1 class="hero-title" aria-label="Найди кофе, который подойдет именно тебе">
+            <span class="hero-title__line">Найди кофе,</span>
+            <span class="hero-title__line">который</span>
+            <span class="hero-title__line">подойдет</span>
+            <span class="hero-title__line hero-title__line--accent">именно тебе</span>
+          </h1>
           <p class="hero-description">
             Откройте для себя сезонные вкусы и фирменные напитки, собранные для уютных
             утренних ритуалов и бодрых дневных пауз.
@@ -65,7 +70,7 @@
               </div>
 
               <div class="drink-tags">
-                <span v-for="tag in drink.tags" :key="tag" class="drink-tag">
+                <span v-for="tag in drink.badges" :key="tag" class="drink-tag">
                   {{ tag }}
                 </span>
               </div>
@@ -149,7 +154,7 @@
                 </div>
 
                 <div class="drink-tags">
-                  <span v-for="tag in drink.tags" :key="tag" class="drink-tag">
+                  <span v-for="tag in drink.badges" :key="tag" class="drink-tag">
                     {{ tag }}
                   </span>
                 </div>
@@ -313,7 +318,7 @@ function formatPrice(price) {
 }
 
 .container {
-  width: min(100%, 1320px);
+  width: min(100%, 1250px);
   margin: 0 auto;
   padding: 0 56px;
 }
@@ -327,7 +332,7 @@ function formatPrice(price) {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 64px;
   align-items: center;
-  max-width: 1160px;
+  max-width: 1250px;
   margin: 0 auto;
   padding-bottom: 96px;
 }
@@ -342,14 +347,23 @@ function formatPrice(price) {
 .highlight-section-title {
   margin: 0;
   font-family: "Noto Serif", serif;
-  font-style: italic;
   color: #1b1d0e;
 }
 
 .hero-title {
   margin-bottom: 32px;
-  font-size: clamp(42px, 6vw, 82px);
-  line-height: 1.05;
+  font-size: clamp(52px, 7vw, 92px);
+  font-weight: 400;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+}
+
+.hero-title__line {
+  display: block;
+}
+
+.hero-title__line--accent {
+  color: #ba937b;
 }
 
 .hero-description,
